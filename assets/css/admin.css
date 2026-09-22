@@ -182,3 +182,6 @@ dl.meta dt { color: var(--muted); font-weight: 600; } dl.meta dd { margin: 0; wo
     .bar { grid-template-columns: 7rem 1fr 2.2rem; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } .spinner { animation-duration: 2s; } }
+.actions .grow { flex: 1; min-width: 240px; }
+a.stat { text-decoration: none; color: inherit; }
+a.stat:hover { border-color: var(--brand); }

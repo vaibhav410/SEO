@@ -40,6 +40,9 @@ function require_admin(array $roles = ['admin', 'editor']): array
     }
 
     $user = current_user();
+    if (!$user && str_starts_with(current_path(), '/api/')) {
+        json_response(['ok' => false, 'error' => 'Your session has expired. Please sign in again.'], 401);
+    }
     if (!$user) {
         $_SESSION['intended'] = $_SERVER['REQUEST_URI'] ?? url('/admin/');
         redirect('/admin/login.php');
