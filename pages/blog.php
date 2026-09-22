@@ -37,6 +37,7 @@ require APP_ROOT . '/includes/header.php';
 
 <section class="section">
     <div class="container">
+        <h2><?= $search !== '' ? 'Search results' : 'Latest guides' ?></h2>
         <?php if ($search !== ''): ?>
             <p class="muted"><?= $total ?> result<?= $total === 1 ? '' : 's' ?> for “<?= e($search) ?>”. <a href="<?= e(url('/blog')) ?>">Clear search</a></p>
         <?php endif; ?>

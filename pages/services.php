@@ -17,6 +17,7 @@ require APP_ROOT . '/includes/header.php';
 </section>
 <section class="section">
     <div class="container">
+        <h2>All services</h2>
         <?php if ($services): ?>
             <div class="grid grid-3">
                 <?php foreach ($services as $s): ?>
