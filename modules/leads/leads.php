@@ -105,23 +105,27 @@ function lead_old_input(): array
         array_flip(['name', 'email', 'phone', 'company', 'interest', 'message']));
 }
 
-function leads_admin_list(string $status, string $search, int $limit, int $offset): array
+function leads_admin_list(string $status, string $search, int $limit, int $offset, string $source = ''): array
 {
-    [$where, $params] = leads_admin_filter($status, $search);
+    [$where, $params] = leads_admin_filter($status, $search, $source);
     return db_all('SELECT id, name, email, phone, company, interest, source_page, status, created_at FROM leads'
         . $where . ' ORDER BY created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset, $params);
 }
 
-function leads_admin_count(string $status, string $search): int
+function leads_admin_count(string $status, string $search, string $source = ''): int
 {
-    [$where, $params] = leads_admin_filter($status, $search);
+    [$where, $params] = leads_admin_filter($status, $search, $source);
     return (int) db_value('SELECT COUNT(*) FROM leads' . $where, $params);
 }
 
-function leads_admin_filter(string $status, string $search): array
+function leads_admin_filter(string $status, string $search, string $source = ''): array
 {
     $clauses = [];
     $params = [];
+    if ($source !== '') {
+        $clauses[] = 'source_page = ?';
+        $params[] = $source;
+    }
     if (in_array($status, LEAD_STATUSES, true)) {
         $clauses[] = 'status = ?';
         $params[] = $status;
