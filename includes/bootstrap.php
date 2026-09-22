@@ -33,7 +33,16 @@ require APP_ROOT . '/includes/auth.php';
 require APP_ROOT . '/includes/seo.php';
 require APP_ROOT . '/includes/schema.php';
 require APP_ROOT . '/includes/markdown.php';
+require APP_ROOT . '/includes/validation.php';
+require APP_ROOT . '/includes/uploads.php';
+require APP_ROOT . '/includes/ui.php';
 require APP_ROOT . '/modules/settings/settings.php';
+require APP_ROOT . '/modules/services/services.php';
+require APP_ROOT . '/modules/content/posts.php';
+require APP_ROOT . '/modules/landing-pages/landing_pages.php';
+require APP_ROOT . '/modules/faqs/faqs.php';
+require APP_ROOT . '/modules/leads/leads.php';
+require APP_ROOT . '/modules/linking/linker.php';
 
 register_error_handlers();
 

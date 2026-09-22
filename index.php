@@ -11,11 +11,6 @@
  */
 require __DIR__ . '/includes/bootstrap.php';
 
-/** Words that can never be used as landing-page slugs because they are real routes. */
-const RESERVED_SLUGS = ['services', 'blog', 'resources', 'faq', 'contact', 'admin', 'api', 'assets',
-    'config', 'includes', 'modules', 'pages', 'database', 'storage', 'tests', 'docs', 'index', 'search',
-    'sitemap', 'robots', 'login', 'logout', 'thank-you'];
-
 $path = current_path();
 
 // One URL per resource: drop trailing slashes, index.php and upper-case variants with a 301.
