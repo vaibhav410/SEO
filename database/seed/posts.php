@@ -129,6 +129,16 @@ You rent an entire physical server.
 ## A practical path
 
 Most businesses start on shared or WordPress hosting, move to a VPS when they need more control, and only then consider dedicated hardware. Moving step by step keeps cost aligned with real needs. Whatever you choose, run your site on HTTPS and keep off-site backups.
+
+## Questions to ask before you decide
+
+- How much traffic do you expect at your busiest time, not on an average day?
+- Does anyone on your team have Linux administration experience?
+- Do you need software or versions the provider's shared servers do not offer?
+- Who will apply security updates, monitor the server and restore backups?
+- What does it cost to move up a tier later, and how is the migration handled?
+
+Honest answers to these questions usually point clearly to one option. If they do not, start with the simpler choice: it is easier to upgrade than to run infrastructure you are not ready to manage.
 MD,
         'faqs' => [
             ['Is a VPS faster than shared hosting?', 'Usually, because resources are allocated to you rather than shared. Real-world speed still depends on how well your site and server are configured.'],
@@ -181,6 +191,13 @@ Before you register, search for existing trademarks and check whether matching s
 ## Put the domain to work
 
 A domain on its own is just an address. Connect it to web hosting for your website and to business email so every message you send reinforces your brand.
+
+## Common mistakes to avoid
+
+- **Registering in an employee's personal name** – always register the domain to the business so ownership is clear.
+- **Letting a web designer hold the only login** – make sure the business has its own registrar account access.
+- **Ignoring renewal emails** – an expired domain takes your website and email offline, and some expired names are bought by others.
+- **Choosing a name that is hard to spell** – every misspelling is a customer who cannot find you or whose email bounces.
 MD,
         'faqs' => [
             ['Should I buy .in or .com for my business?', 'If most customers are in India, .in or .co.in is a strong choice. Registering both and redirecting one to the other protects your brand.'],
@@ -234,6 +251,16 @@ Google has said HTTPS is a lightweight ranking signal. More importantly, visitor
 ## Remember renewals
 
 Certificates expire. Keep renewal reminders active, or your visitors will see a full-page security warning instead of your website.
+
+## Fixing mixed-content warnings
+
+After switching to HTTPS, some pages may still show a warning because an image, script or stylesheet is loaded over plain HTTP. Common causes are:
+
+- Hard-coded `http://` links in old posts or theme files
+- Third-party widgets or embeds that still use HTTP
+- Images inserted with a full HTTP URL in page builders
+
+Use your browser's developer tools to find the insecure resources, then update them to HTTPS or to relative URLs. Once every resource loads securely, the padlock appears on every page.
 MD,
         'faqs' => [
             ['Is a free SSL certificate enough?', 'For many brochure sites a domain-validated certificate is enough to enable HTTPS. Businesses that want company details verified choose OV or EV certificates.'],
@@ -290,6 +317,13 @@ Business plans give an administrator control over:
 5. Configure email apps on desktops and phones
 
 Business email is one of the lowest-cost upgrades that makes a company look and operate more professionally.
+
+## Avoiding problems during the switch
+
+- **Lower the DNS TTL a day in advance** so the MX change takes effect quickly.
+- **Create every mailbox before switching MX records** so no incoming mail bounces.
+- **Keep the old accounts active for a few weeks** in case someone still sends to them.
+- **Tell your team which apps to reconfigure** on phones and laptops, and share the new settings in writing.
 MD,
         'faqs' => [
             ['Can I keep my website hosting and email with different providers?', 'Yes. Email is controlled by your domain\'s MX records, so it can point to a different service from your website hosting.'],
@@ -344,6 +378,16 @@ A backup is only useful if you can restore it. Every few months:
 ## Combine backups with prevention
 
 Backups are your safety net. Keep software updated, use strong passwords, run your site on HTTPS and scan for malware to reduce how often you need them.
+
+## When something goes wrong
+
+1. **Stay calm and stop changes** – do not keep editing a broken or compromised site.
+2. **Identify the last good backup** – choose a point before the problem started.
+3. **Restore to staging first** if possible, and confirm the site works.
+4. **Fix the cause** – update the plugin, change passwords or remove the malicious code.
+5. **Restore to production** and keep a note of what happened for next time.
+
+Having these steps written down in advance means anyone on the team can follow them under pressure.
 MD,
         'faqs' => [
             ['Are my hosting provider\'s backups enough?', 'They help, but keep at least one copy that you control and that is stored off the hosting server. That protects you if the account itself is compromised.'],
