@@ -185,3 +185,4 @@ dl.meta dt { color: var(--muted); font-weight: 600; } dl.meta dd { margin: 0; wo
 .actions .grow { flex: 1; min-width: 240px; }
 a.stat { text-decoration: none; color: inherit; }
 a.stat:hover { border-color: var(--brand); }
+@media (min-width: 901px) { .admin-shell { background: linear-gradient(to right, var(--side) 248px, var(--surface) 248px); } }

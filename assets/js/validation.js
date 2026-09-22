@@ -55,6 +55,17 @@
     if (checklist) {
         var cfg = JSON.parse(checklist.getAttribute('data-seo-checklist'));
         var val = function (id) { var el = document.getElementById(id); return el ? el.value.toLowerCase() : ''; };
+        // Same rule as the server (keyword_in_text): every significant word present, any order.
+        var stop = ['a', 'an', 'the', 'in', 'of', 'for', 'to', 'and', 'vs', 'is', 'how', 'what', 'best', 'on', 'with'];
+        var hasKw = function (kw, text) {
+            if (!kw || !text) { return false; }
+            if (text.indexOf(kw) !== -1) { return true; }
+            var words = kw.split(/\s+/).filter(function (w) { return w && stop.indexOf(w) === -1; });
+            return words.length > 0 && words.every(function (w) {
+                var stem = w.length > 4 ? w.replace(/s+$/, '') : w;
+                return new RegExp('\\b' + stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(text);
+            });
+        };
         var runChecks = function () {
             var kw = val(cfg.keyword).trim();
             var title = val(cfg.meta_title) || val(cfg.title);
@@ -63,9 +74,9 @@
             var words = body.split(/\s+/).filter(Boolean).length;
             var checks = [
                 ['Primary keyword set', !!kw],
-                ['Keyword in title', kw && title.indexOf(kw) !== -1],
-                ['Keyword in meta description', kw && desc.indexOf(kw) !== -1],
-                ['Keyword used in content', kw && body.indexOf(kw) !== -1],
+                ['Keyword in title', hasKw(kw, title)],
+                ['Keyword in meta description', hasKw(kw, desc)],
+                ['Keyword used in content', hasKw(kw, body)],
                 ['Title 30–60 characters', title.length >= 30 && title.length <= 60],
                 ['Description 70–160 characters', desc.length >= 70 && desc.length <= 160],
                 ['Content has H2 sections (## )', /^##\s/m.test(body)],

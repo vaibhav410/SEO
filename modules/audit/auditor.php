@@ -304,7 +304,7 @@ function audit_analyze(string $html, string $pageUrl, array $headers = []): arra
     } else {
         $scores['alt'] = (int) round(100 * ($images->length - $noAlt) / $images->length);
         $noAlt === 0
-            ? $add('alt', 'pass', 'All ' . $images->length . ' images have alt attributes.')
+            ? $add('alt', 'pass', $images->length === 1 ? 'The image has an alt attribute.' : 'All ' . $images->length . ' images have alt attributes.')
             : $add('alt', 'warn', "$noAlt of {$images->length} images are missing alt text.");
     }
 
