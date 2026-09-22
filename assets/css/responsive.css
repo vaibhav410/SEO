@@ -1,0 +1,46 @@
+/* ==========================================================================
+   Responsive layout: tablet (>= 640px), laptop (>= 960px), desktop (>= 1200px)
+   ========================================================================== */
+
+@media (min-width: 640px) {
+    .container { padding-inline: 1.5rem; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .form-grid.two { grid-template-columns: repeat(2, 1fr); }
+    .form-grid .span-2 { grid-column: span 2; }
+    .footer-grid { grid-template-columns: repeat(2, 1fr); }
+    .cta-band { grid-template-columns: 1fr auto; padding: 2.5rem; }
+    .section { padding-block: 4.5rem; }
+}
+
+@media (min-width: 960px) {
+    .nav-toggle { display: none; }
+    .site-nav, .no-js .site-nav {
+        display: flex; align-items: center; gap: 1.75rem; position: static;
+        padding: 0; border: 0; box-shadow: none; background: none;
+    }
+    .site-nav ul { display: flex; gap: 1.75rem; margin: 0; }
+    .site-nav li a { padding: .4rem 0; border: 0; border-bottom: 2px solid transparent; }
+    .site-nav a[aria-current="page"] { border-bottom-color: var(--brand); }
+
+    .hero { padding: 5rem 0 4.5rem; }
+    .hero-grid { grid-template-columns: 1.15fr .85fr; gap: 4rem; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+    .split-wide { display: grid; grid-template-columns: 1.3fr .7fr; gap: 3.5rem; align-items: start; }
+    .footer-grid { grid-template-columns: 1.6fr 1fr 1.3fr 1fr; }
+    .article-layout { grid-template-columns: minmax(0, 1fr) 300px; gap: 3.5rem; }
+    .article-aside { position: sticky; top: 92px; align-self: start; }
+    .page-hero { padding: 4.25rem 0 3.75rem; }
+}
+
+@media (max-width: 959px) {
+    .article-aside { order: -1; }
+    .article-aside .aside-card { display: none; }
+}
+
+@media print {
+    .site-header, .site-footer, .article-aside, .cta-band, .skip-link { display: none !important; }
+    body { color: #000; }
+    .prose a::after { content: " (" attr(href) ")"; font-size: .85em; }
+}
