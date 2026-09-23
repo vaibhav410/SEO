@@ -161,7 +161,9 @@ function query_with(array $changes): string
 function client_ip(): string
 {
     if (config('app.trust_proxy')) {
-        foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP', 'HTTP_X_FORWARDED_FOR'] as $header) {
+        // Vercel (front) -> Render/Cloudflare (origin): Vercel's header carries the visitor, while
+        // CF-Connecting-IP would be Vercel's egress address. X-Forwarded-For starts with the visitor.
+        foreach (['HTTP_X_VERCEL_FORWARDED_FOR', 'HTTP_X_FORWARDED_FOR', 'HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP'] as $header) {
             $value = trim(explode(',', (string) ($_SERVER[$header] ?? ''))[0]);
             if ($value !== '' && filter_var($value, FILTER_VALIDATE_IP)) {
                 return $value;

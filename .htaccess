@@ -12,7 +12,7 @@ ServerSignature Off
     # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Block private application folders and sensitive file types
-    RewriteRule ^(config|includes|modules|pages|database|storage|tests|docs|docker)(/|$) - [F,L]
+    RewriteRule ^(config|includes|modules|pages|database|storage|tests|docs|docker|vercel)(/|$) - [F,L]
     RewriteRule ^admin/partials(/|$) - [F,L]
     RewriteRule ^(Dockerfile|render\.yaml)$ - [F,L]
     RewriteRule (^|/)\. - [F,L]
