@@ -11,6 +11,8 @@ Keyword → Content → Landing page → Internal links → Organic discovery �
 > Built for the SYSCOM INDIA Full Stack Development internship assignment:
 > *"Design & develop a web application to increase brand value & SEO ranking for syscom.co.in."*
 > Full write-up: [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
+>
+> **Live demo:** https://syscom-growthhub.onrender.com (free instance: the first request after a period of inactivity can take up to a minute while it wakes, and demo data is restored on every restart).
 
 ![Public homepage](docs/screenshots/public-home.png)
 
@@ -212,6 +214,18 @@ modules, and the auditor (SSRF, invalid URL, live fetch). See the test matrix in
 [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md#13-testing).
 
 ## 14. Deployment
+
+### Render (Docker, used for the live demo)
+
+The repository includes a `Dockerfile` (Apache + PHP 8.3 + MariaDB in one container) and a `render.yaml` blueprint.
+
+1. In Render choose **New → Blueprint** and select this repository (or create a Docker web service from it).
+2. Set `ADMIN_PASSWORD` to a strong password. It replaces the public demo password at every start. `APP_SECRET` is generated automatically.
+3. Deploy. The container starts MariaDB, writes its config from the environment (debug off, proxy-aware client IPs), installs the schema and demo data, then starts Apache on Render's port.
+
+The bundled database is **ephemeral**: free instances have no persistent disk, so data resets to the demo content on each restart. For a persistent setup, remove MariaDB from the image and set `DB_HOST`, `DB_USER`, `DB_PASS` and `DB_NAME` for a managed MySQL database.
+
+### Classic hosting (Apache + PHP + MySQL)
 
 1. Upload the files to any Apache + PHP 8.1 host (shared hosting works).
 2. Create the database and import `database/schema.sql` (and `seed.sql` if you want demo content).
