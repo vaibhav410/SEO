@@ -16,6 +16,8 @@ $config = [
         'timezone' => 'Asia/Kolkata',
         // Secret used to hash visitor IPs for rate limiting. Change in production.
         'secret'   => 'change-this-secret-in-config-local',
+        // Set true only when running behind a reverse proxy that sets X-Forwarded-For / CF-Connecting-IP.
+        'trust_proxy' => false,
     ],
     'db' => [
         'host'    => '127.0.0.1',
@@ -59,14 +61,14 @@ if (is_file($local)) {
 $env = [
     'DB_HOST' => ['db', 'host'], 'DB_PORT' => ['db', 'port'], 'DB_NAME' => ['db', 'name'],
     'DB_USER' => ['db', 'user'], 'DB_PASS' => ['db', 'pass'],
-    'APP_URL' => ['app', 'base_url'], 'APP_DEBUG' => ['app', 'debug'], 'APP_SECRET' => ['app', 'secret'],
+    'APP_URL' => ['app', 'base_url'], 'APP_DEBUG' => ['app', 'debug'], 'APP_SECRET' => ['app', 'secret'], 'TRUST_PROXY' => ['app', 'trust_proxy'],
     'AUDIT_ALLOW_SELF' => ['audit', 'allow_self'],
     'OPENROUTER_API_KEY' => ['ai', 'api_key'], 'AI_MODEL' => ['ai', 'model'],
 ];
 foreach ($env as $var => [$group, $key]) {
     $value = getenv($var);
     if ($value !== false) {
-        $config[$group][$key] = in_array($key, ['debug', 'allow_self'], true)
+        $config[$group][$key] = in_array($key, ['debug', 'allow_self', 'trust_proxy'], true)
             ? filter_var($value, FILTER_VALIDATE_BOOLEAN)
             : $value;
     }

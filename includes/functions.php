@@ -153,8 +153,21 @@ function query_with(array $changes): string
     return $query ? '?' . http_build_query($query) : '';
 }
 
+/**
+ * Visitor IP for rate limiting. Behind a trusted reverse proxy (Render, Cloudflare, a load balancer)
+ * REMOTE_ADDR is the proxy, so the real address is read from the proxy's headers - but only when
+ * app.trust_proxy is enabled, because clients can forge these headers on a direct connection.
+ */
 function client_ip(): string
 {
+    if (config('app.trust_proxy')) {
+        foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP', 'HTTP_X_FORWARDED_FOR'] as $header) {
+            $value = trim(explode(',', (string) ($_SERVER[$header] ?? ''))[0]);
+            if ($value !== '' && filter_var($value, FILTER_VALIDATE_IP)) {
+                return $value;
+            }
+        }
+    }
     return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 }
 

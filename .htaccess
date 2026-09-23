@@ -12,9 +12,11 @@ ServerSignature Off
     # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Block private application folders and sensitive file types
-    RewriteRule ^(config|includes|modules|pages|database|storage|tests|docs)(/|$) - [F,L]
+    RewriteRule ^(config|includes|modules|pages|database|storage|tests|docs|docker)(/|$) - [F,L]
+    RewriteRule ^admin/partials(/|$) - [F,L]
+    RewriteRule ^(Dockerfile|render\.yaml)$ - [F,L]
     RewriteRule (^|/)\. - [F,L]
-    RewriteRule \.(sql|md|log|ini)$ - [F,L]
+    RewriteRule \.(sql|md|log|ini|sh)$ - [F,L]
 
     # Dynamic robots.txt and XML sitemap
     RewriteRule ^robots\.txt$ robots.php [L]

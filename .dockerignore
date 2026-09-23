@@ -1,0 +1,7 @@
+.git
+.vscode
+config/config.local.php
+storage/logs/*.log
+assets/uploads/*
+!assets/uploads/.htaccess
+!assets/uploads/.gitkeep

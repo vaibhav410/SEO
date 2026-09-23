@@ -9,7 +9,7 @@
 $path = rawurldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
 // Same private folders .htaccess denies.
-if (preg_match('#^/(config|includes|modules|pages|database|storage|tests|docs|admin/partials)(/|$)|/\.|\.(sql|md|log|ini)$#i', $path)) {
+if (preg_match('#^/(config|includes|modules|pages|database|storage|tests|docs|docker|admin/partials)(/|$)|^/(Dockerfile|render\.yaml)$|/\.|\.(sql|md|log|ini|sh)$#i', $path)) {
     http_response_code(403);
     echo 'Forbidden';
     return true;

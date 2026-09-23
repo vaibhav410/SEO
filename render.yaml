@@ -1,0 +1,15 @@
+# Render Blueprint: one free web service running the GrowthHub container (Apache + PHP + MariaDB).
+# The bundled database is re-seeded with demo data on every start (free instances have no persistent disk).
+services:
+  - type: web
+    name: syscom-growthhub
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    healthCheckPath: /robots.txt
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false   # set in the dashboard; replaces the public demo password
+      - key: APP_SECRET
+        generateValue: true
