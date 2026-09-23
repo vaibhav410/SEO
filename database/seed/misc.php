@@ -98,9 +98,45 @@ return [
     ],
 
     // Demo leads so the lead inbox is not empty; clearly marked as sample data.
+    // [name, email, phone, company, requirement, message, source page, status, days ago, campaign]
     'leads' => [
-        ['Demo Lead – Priya Sharma', 'priya.demo@example.com', '9800000001', 'Example Interiors (demo)', 'Web Hosting', 'Sample enquiry: we need hosting and 5 email accounts for our new company website.', '/web-hosting-india', 'new', 2],
-        ['Demo Lead – Rahul Verma', 'rahul.demo@example.com', null, 'Example Agency (demo)', 'Reseller Hosting', 'Sample enquiry: looking for reseller hosting for around 20 client WordPress sites.', '/services/reseller-hosting', 'contacted', 5],
-        ['Demo Lead – Anita Rao', 'anita.demo@example.com', '9800000003', null, 'Business Email', 'Sample enquiry: moving 12 staff from free email to our own domain.', '/business-email-hosting-india', 'qualified', 9],
+        ['Demo Lead – Priya Sharma', 'priya.demo@example.com', '9800000001', 'Example Interiors (demo)', 'Web Hosting', 'Sample enquiry: we need hosting and 5 email accounts for our new company website.', '/web-hosting-india', 'new', 2, null],
+        ['Demo Lead – Rahul Verma', 'rahul.demo@example.com', null, 'Example Agency (demo)', 'Reseller Hosting', 'Sample enquiry: looking for reseller hosting for around 20 client WordPress sites.', '/services/reseller-hosting', 'contacted', 5, null],
+        ['Demo Lead – Anita Rao', 'anita.demo@example.com', '9800000003', null, 'Business Email', 'Sample enquiry: moving 12 staff from free email to our own domain.', '/business-email-hosting-india', 'qualified', 9, 'linkedin-email-guide'],
+        ['Demo Lead – Karan Mehta', 'karan.demo@example.com', null, 'Example Retail (demo)', 'WordPress Hosting', 'Sample enquiry: our WooCommerce store is slow on current hosting, want to move.', '/blog/how-to-choose-web-hosting-india', 'converted', 24, null],
+    ],
+
+    'categories' => [
+        ['Hosting', 'hosting', 'Guides to choosing and running web, WordPress, VPS and dedicated hosting.'],
+        ['Domains', 'domains', 'Choosing, registering, transferring and protecting domain names.'],
+        ['Business Email', 'business-email', 'Professional email on your own domain: setup, deliverability and migration.'],
+        ['Website Security', 'website-security', 'SSL certificates, backups and keeping websites safe.'],
+    ],
+    // article slug => category slug
+    'post_categories' => [
+        'how-to-choose-web-hosting-india' => 'hosting', 'shared-vs-vps-vs-dedicated-hosting' => 'hosting',
+        'how-to-choose-a-domain-name' => 'domains', 'business-email-vs-free-email' => 'business-email',
+        'what-is-an-ssl-certificate' => 'website-security', 'website-backup-strategy-small-business' => 'website-security',
+    ],
+
+    // service slug => [benefits (one per line), CTA text]
+    'service_extras' => [
+        'web-hosting' => ["Get online quickly without managing servers\nProfessional email on the same account\nRoom to grow into VPS or cloud hosting", 'Find the right hosting plan'],
+        'wordpress-hosting' => ["Faster WordPress pages and admin\nFewer plugin and update headaches\nA secure base for WooCommerce", 'Talk to a WordPress specialist'],
+        'vps-hosting' => ["Guaranteed resources for busy sites\nFull control of your software stack\nIsolation from other customers", 'Plan your VPS'],
+        'dedicated-servers' => ["Predictable performance under heavy load\nComplete control over hardware resources\nSuitable for databases and business applications", 'Discuss your server requirements'],
+        'domain-registration' => ["Own your brand address online\nManage DNS, renewals and transfers in one place\nProtect the domain from accidental expiry", 'Find your domain'],
+        'business-email' => ["Customers trust email from your own domain\nThe business keeps control of every mailbox\nBetter inbox placement with SPF, DKIM and DMARC", 'Set up business email'],
+        'ssl-certificates' => ["Encrypt logins, forms and payments\nRemove browser \"Not secure\" warnings\nBuild visitor trust on every page", 'Choose an SSL certificate'],
+        'reseller-hosting' => ["Recurring revenue from client hosting\nSeparate, isolated accounts per client\nSell domains, email and SSL together", 'Start reselling hosting'],
+    ],
+
+    // Organic distribution plan: planned only - real posts are recorded when actually published.
+    // [platform, title, article slug, notes]
+    'distribution' => [
+        ['linkedin', 'Share: How to choose web hosting (checklist carousel)', 'how-to-choose-web-hosting-india', 'Demo plan. Post as a document carousel from the company page.'],
+        ['youtube', 'Short video: What an SSL certificate does in 60 seconds', 'what-is-an-ssl-certificate', 'Demo plan. Screen recording plus voice-over.'],
+        ['reddit', 'Answer questions on choosing .in vs .com domains', 'how-to-choose-a-domain-name', 'Demo plan. Only answer genuine questions; follow community rules.'],
+        ['x', 'Thread: 5 signs you have outgrown shared hosting', 'shared-vs-vps-vs-dedicated-hosting', 'Demo plan.'],
     ],
 ];

@@ -6,8 +6,8 @@ CREATE DATABASE IF NOT EXISTS syscom_growthhub CHARACTER SET utf8mb4 COLLATE utf
 USE syscom_growthhub;
 
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS login_attempts, seo_audits, internal_links, backlinks, leads, faqs,
-    landing_pages, keywords, posts, services, settings, users;
+DROP TABLE IF EXISTS activity_log, opportunity_states, distribution_posts, login_attempts, seo_audits, internal_links,
+    backlinks, leads, faqs, landing_pages, keywords, posts, categories, services, settings, users;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ---------------------------------------------------------------------------
@@ -20,6 +20,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role          ENUM('admin', 'editor') NOT NULL DEFAULT 'editor',
     last_login_at DATETIME NULL,
+    notifications_seen_at DATETIME NULL,
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_users_email (email)
@@ -47,14 +48,34 @@ CREATE TABLE services (
     features         TEXT         NULL COMMENT 'One feature per line',
     primary_keyword  VARCHAR(150) NULL,
     external_url     VARCHAR(255) NULL COMMENT 'Matching product page on syscom.co.in',
+    benefits         TEXT         NULL COMMENT 'One benefit per line',
+    cta_text         VARCHAR(150) NOT NULL DEFAULT 'Talk to our team',
     meta_title       VARCHAR(70)  NULL,
     meta_description VARCHAR(170) NULL,
+    canonical_url    VARCHAR(255) NULL COMMENT 'Override only when another URL is the canonical version',
+    og_title         VARCHAR(100) NULL,
+    og_description   VARCHAR(200) NULL,
     sort_order       SMALLINT     NOT NULL DEFAULT 0,
     status           ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_services_slug (slug),
     KEY idx_services_status_order (status, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Blog categories (/blog/category/{slug})
+-- ---------------------------------------------------------------------------
+CREATE TABLE categories (
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name             VARCHAR(80)  NOT NULL,
+    slug             VARCHAR(80)  NOT NULL,
+    description      VARCHAR(300) NOT NULL DEFAULT '',
+    meta_description VARCHAR(170) NULL,
+    sort_order       SMALLINT NOT NULL DEFAULT 0,
+    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_categories_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
@@ -71,6 +92,11 @@ CREATE TABLE posts (
     meta_description   VARCHAR(170) NULL,
     featured_image     VARCHAR(255) NULL,
     featured_image_alt VARCHAR(200) NULL,
+    canonical_url      VARCHAR(255) NULL,
+    og_title           VARCHAR(100) NULL,
+    og_description     VARCHAR(200) NULL,
+    schema_type        ENUM('Article', 'BlogPosting', 'TechArticle') NOT NULL DEFAULT 'Article',
+    category_id        INT UNSIGNED NULL,
     service_id         INT UNSIGNED NULL COMMENT 'Related service for cross-linking',
     author_id          INT UNSIGNED NULL,
     status             ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
@@ -80,9 +106,11 @@ CREATE TABLE posts (
     UNIQUE KEY uq_posts_slug (slug),
     KEY idx_posts_status_published (status, published_at),
     KEY idx_posts_service (service_id),
+    KEY idx_posts_category (category_id),
     FULLTEXT KEY ft_posts_search (title, excerpt, content),
     CONSTRAINT fk_posts_author  FOREIGN KEY (author_id)  REFERENCES users (id)    ON DELETE SET NULL,
-    CONSTRAINT fk_posts_service FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
+    CONSTRAINT fk_posts_service FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL,
+    CONSTRAINT fk_posts_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
@@ -103,6 +131,9 @@ CREATE TABLE landing_pages (
     use_cases        TEXT NULL COMMENT 'One per line: Title: description',
     content          MEDIUMTEXT NULL COMMENT 'Optional long-form Markdown section',
     cta_text         VARCHAR(150) NOT NULL DEFAULT 'Talk to our team',
+    canonical_url    VARCHAR(255) NULL,
+    og_title         VARCHAR(100) NULL,
+    og_description   VARCHAR(200) NULL,
     service_id       INT UNSIGNED NULL,
     status           ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -144,12 +175,15 @@ CREATE TABLE keywords (
     intent     ENUM('informational', 'navigational', 'commercial', 'transactional') NOT NULL,
     priority   ENUM('high', 'medium', 'low') NOT NULL DEFAULT 'medium',
     target_url VARCHAR(255) NULL COMMENT 'App path such as /services/web-hosting',
+    content_type ENUM('guide', 'landing_page', 'service_page', 'home', 'faq') NULL,
+    service_id INT UNSIGNED NULL COMMENT 'Primary service this keyword supports',
     status     ENUM('researching', 'targeting', 'mapped', 'paused') NOT NULL DEFAULT 'researching',
     notes      TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_keywords_keyword (keyword),
-    KEY idx_keywords_status_priority (status, priority)
+    KEY idx_keywords_status_priority (status, priority),
+    CONSTRAINT fk_keywords_service FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
@@ -181,6 +215,7 @@ CREATE TABLE backlinks (
     status      ENUM('opportunity', 'submitted', 'pending', 'live', 'rejected') NOT NULL DEFAULT 'opportunity',
     notes       TEXT NULL,
     last_checked_at DATETIME NULL,
+    verification_message VARCHAR(255) NULL,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_backlinks_status (status),
@@ -196,10 +231,12 @@ CREATE TABLE leads (
     email       VARCHAR(190) NOT NULL,
     phone       VARCHAR(20)  NULL,
     company     VARCHAR(150) NULL,
-    interest    VARCHAR(120) NULL,
+    interest    VARCHAR(120) NULL COMMENT 'Requirement chosen on the form',
     message     TEXT NOT NULL,
     source_page VARCHAR(255) NOT NULL DEFAULT '/',
-    status      ENUM('new', 'contacted', 'qualified', 'won', 'lost', 'spam') NOT NULL DEFAULT 'new',
+    keyword     VARCHAR(150) NULL COMMENT 'Primary keyword of the page that captured the lead',
+    campaign    VARCHAR(100) NULL COMMENT 'utm_campaign / utm_source when present',
+    status      ENUM('new', 'contacted', 'qualified', 'converted', 'closed', 'spam') NOT NULL DEFAULT 'new',
     admin_notes TEXT NULL,
     ip_hash     CHAR(64) NOT NULL,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -237,6 +274,52 @@ CREATE TABLE seo_audits (
     KEY idx_audits_created (created_at),
     KEY idx_audits_url (url(191)),
     CONSTRAINT fk_audits_user FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Organic distribution: where content was shared (social, communities, video)
+-- ---------------------------------------------------------------------------
+CREATE TABLE distribution_posts (
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    platform     ENUM('linkedin', 'x', 'facebook', 'reddit', 'youtube', 'quora', 'other') NOT NULL,
+    title        VARCHAR(200) NOT NULL,
+    post_id      INT UNSIGNED NULL COMMENT 'Article being distributed',
+    url          VARCHAR(500) NULL COMMENT 'Public URL of the social post',
+    status       ENUM('planned', 'published', 'skipped') NOT NULL DEFAULT 'planned',
+    published_at DATE NULL,
+    notes        TEXT NULL,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_distribution_status (status, platform),
+    CONSTRAINT fk_distribution_post FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Admin activity timeline
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_log (
+    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT UNSIGNED NULL,
+    action      VARCHAR(40)  NOT NULL COMMENT 'created, updated, published, deleted, audited, verified, status',
+    entity_type VARCHAR(40)  NOT NULL COMMENT 'post, service, landing, keyword, lead, backlink, audit, ...',
+    entity_id   INT UNSIGNED NULL,
+    label       VARCHAR(255) NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_activity_created (created_at),
+    KEY idx_activity_entity (entity_type, entity_id),
+    CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Opportunity centre: remembers which computed opportunities were done or dismissed
+-- ---------------------------------------------------------------------------
+CREATE TABLE opportunity_states (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    opportunity_key CHAR(40) NOT NULL COMMENT 'sha1 of the opportunity identity',
+    status          ENUM('in_progress', 'done', 'dismissed') NOT NULL,
+    updated_by      INT UNSIGNED NULL,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_opportunity_key (opportunity_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
