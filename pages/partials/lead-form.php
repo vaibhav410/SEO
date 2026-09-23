@@ -9,6 +9,8 @@ $errors = $state['errors'];
     <form method="post" action="#lead-form" novalidate data-validate>
         <?= csrf_field() ?>
         <input type="hidden" name="_ts" value="<?= e($state['ts']) ?>">
+        <?php /* Attribution: the source page and keyword are recorded server-side from the route; only an optional utm campaign travels with the form. */ ?>
+        <?php if (!empty($state['campaign'])): ?><input type="hidden" name="campaign" value="<?= e($state['campaign']) ?>"><?php endif; ?>
         <div class="hp" aria-hidden="true">
             <label for="lf-website">Leave this field empty</label>
             <input type="text" id="lf-website" name="website" tabindex="-1" autocomplete="off">
@@ -34,9 +36,9 @@ $errors = $state['errors'];
                 <input type="text" id="lf-company" name="company" maxlength="150" autocomplete="organization" value="<?= e($old['company'] ?? '') ?>">
             </div>
             <div class="field span-2">
-                <label for="lf-interest">Interested in <span class="optional">(optional)</span></label>
+                <label for="lf-interest">Requirement <span class="optional">(optional)</span></label>
                 <select id="lf-interest" name="interest">
-                    <option value="">Select a service</option>
+                    <option value="">What do you need?</option>
                     <?php foreach ($state['interests'] as $interest): ?>
                         <option<?= ($old['interest'] ?? '') === $interest ? ' selected' : '' ?>><?= e($interest) ?></option>
                     <?php endforeach; ?>
@@ -50,6 +52,6 @@ $errors = $state['errors'];
             </div>
         </div>
         <p><button type="submit" class="btn btn-primary"><?= e($button) ?></button></p>
-        <p class="form-note">We use your details only to reply to this enquiry.</p>
+        <p class="form-note"><?= icon('lock', 'icon icon-xs') ?> Secure form. We use your details only to reply to this enquiry.</p>
     </form>
 </div>

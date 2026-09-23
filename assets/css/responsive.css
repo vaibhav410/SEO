@@ -32,6 +32,10 @@
     .article-layout { grid-template-columns: minmax(0, 1fr) 300px; gap: 3.5rem; }
     .article-aside { position: sticky; top: 92px; align-self: start; }
     .page-hero { padding: 4.25rem 0 3.75rem; }
+    .featured-post { grid-template-columns: 1fr auto; padding: 2.5rem 3rem; }
+    .featured-art { display: block; }
+    .nav-search { padding: .4rem 0; }
+    .nav-search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 }
 
 @media (max-width: 959px) {

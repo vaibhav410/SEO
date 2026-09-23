@@ -29,7 +29,7 @@ $isActive = fn(string $href) => $path === $href || str_starts_with($path, $href 
 <header class="site-header">
     <div class="container header-inner">
         <a class="logo" href="<?= e(url('/')) ?>" aria-label="<?= e(setting('site_name', 'SYSCOM')) ?> home">
-            <img src="<?= e(url('/assets/images/logo.svg')) ?>" alt="" width="36" height="36">
+            <img src="<?= e(url('/' . (setting('logo_path') ?: 'assets/images/logo.svg'))) ?>" alt="" width="36" height="36">
             <span><?= e(setting('site_name', 'SYSCOM')) ?></span>
         </a>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
@@ -41,7 +41,8 @@ $isActive = fn(string $href) => $path === $href || str_starts_with($path, $href 
                     <li><a href="<?= e(url($href)) ?>"<?= $isActive($href) ? ' aria-current="page"' : '' ?>><?= e($label) ?></a></li>
                 <?php endforeach; ?>
             </ul>
-            <a class="btn btn-primary btn-sm" href="<?= e(url('/contact')) ?>">Get a quote</a>
+            <a class="nav-search" href="<?= e(url('/search')) ?>"<?= $isActive('/search') ? ' aria-current="page"' : '' ?>><?= icon('search', 'icon icon-sm') ?><span class="nav-search-label">Search</span></a>
+            <a class="btn btn-primary btn-sm" href="<?= e(url('/contact')) ?>">Talk to SYSCOM</a>
         </nav>
     </div>
 </header>

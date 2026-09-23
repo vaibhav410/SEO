@@ -10,7 +10,7 @@ function schema_organization(): array
         '@id'   => absolute_url('/#organization'),
         'name'  => setting('site_name', 'SYSCOM'),
         'url'   => absolute_url('/'),
-        'logo'  => absolute_url('/assets/images/logo.png'),
+        'logo'  => absolute_url('/' . (setting('logo_path') ?: 'assets/images/logo.png')),
     ];
     $sameAs = lines(setting('social_profiles', ''));
     if ($sameAs) {
@@ -49,7 +49,7 @@ function schema_breadcrumbs(array $crumbs): array
 function schema_article(array $post): array
 {
     $article = [
-        '@type'            => 'Article',
+        '@type'            => $post['schema_type'] ?? 'Article',
         'headline'         => str_limit($post['title'], 110),
         'description'      => $post['meta_description'] ?: $post['excerpt'],
         'datePublished'    => iso_date($post['published_at']),

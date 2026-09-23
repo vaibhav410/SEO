@@ -11,7 +11,7 @@ $mainSite = setting('main_site_url');
     <div class="container footer-grid">
         <div class="footer-brand">
             <a class="logo logo-light" href="<?= e(url('/')) ?>">
-                <img src="<?= e(url('/assets/images/logo.svg')) ?>" alt="" width="32" height="32">
+                <img src="<?= e(url('/' . (setting('logo_path') ?: 'assets/images/logo.svg'))) ?>" alt="" width="32" height="32">
                 <span><?= e(setting('site_name', 'SYSCOM')) ?></span>
             </a>
             <p><?= e(setting('site_description')) ?></p>

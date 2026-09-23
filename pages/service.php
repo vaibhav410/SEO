@@ -17,6 +17,9 @@ $seo = seo([
     'title'       => $service['meta_title'] ?: $service['name'],
     'description' => $service['meta_description'] ?: $service['description'],
     'path'        => '/services/' . $service['slug'],
+    'canonical'   => (string) $service['canonical_url'],
+    'og_title'    => (string) $service['og_title'],
+    'og_description' => (string) $service['og_description'],
     'breadcrumbs' => ['Home' => '/', 'Services' => '/services', $service['name'] => '/services/' . $service['slug']],
     'schema'      => [schema_service($service), schema_faq($faqs)],
 ]);

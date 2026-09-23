@@ -9,7 +9,7 @@ if (!$page) {
 }
 $path = '/' . $page['slug'];
 if (is_post()) {
-    lead_handle_submission($path);
+    lead_handle_submission($path, $page['primary_keyword']);
 }
 
 $faqs = faqs_for('landing', (int) $page['id']);
@@ -26,6 +26,9 @@ $seo = seo([
     'title'       => $page['meta_title'] ?: $page['title'],
     'description' => $page['meta_description'] ?: $page['hero_subtitle'],
     'path'        => $path,
+    'canonical'   => (string) $page['canonical_url'],
+    'og_title'    => (string) $page['og_title'],
+    'og_description' => (string) $page['og_description'],
     'breadcrumbs' => $crumbs,
     'schema'      => [schema_faq($faqs)],
 ]);

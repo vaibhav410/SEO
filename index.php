@@ -5,7 +5,8 @@
  *
  *   /                    home
  *   /services            services index      /services/{slug}   service detail
- *   /blog                article index       /blog/{slug}       article
+ *   /blog                article index       /blog/{slug}       article       /blog/category/{slug}
+ *   /search              site search (noindex)
  *   /resources /faq /contact
  *   /{slug}              SEO landing page
  */
@@ -33,7 +34,7 @@ switch (count($segments)) {
         $page = 'home';
         break;
     case 1:
-        $static = ['services' => 'services', 'blog' => 'blog', 'resources' => 'resources', 'faq' => 'faq', 'contact' => 'contact'];
+        $static = ['services' => 'services', 'blog' => 'blog', 'resources' => 'resources', 'faq' => 'faq', 'contact' => 'contact', 'search' => 'search'];
         if (isset($static[$segments[0]])) {
             $page = $static[$segments[0]];
         } elseif (is_valid_slug($segments[0]) && !in_array($segments[0], RESERVED_SLUGS, true)) {
@@ -46,6 +47,12 @@ switch (count($segments)) {
         if (isset($detail[$segments[0]]) && is_valid_slug($segments[1])) {
             $page = $detail[$segments[0]];
             $params['slug'] = $segments[1];
+        }
+        break;
+    case 3:
+        if ($segments[0] === 'blog' && $segments[1] === 'category' && is_valid_slug($segments[2])) {
+            $page = 'blog';
+            $params['categorySlug'] = $segments[2];
         }
         break;
 }

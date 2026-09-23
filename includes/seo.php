@@ -10,7 +10,8 @@ const SEO_DESCRIPTION_MAX = 160;
  * Normalise page metadata with sensible, non-duplicated fallbacks.
  *
  * Keys: title, description, path (canonical), robots, type (og:type), image, schema (array of JSON-LD nodes),
- *       breadcrumbs ([label => path]), page (pagination number).
+ *       breadcrumbs ([label => path]), page (pagination number),
+ *       canonical (absolute URL override), og_title, og_description (social overrides).
  */
 function seo(array $page = []): array
 {
@@ -25,6 +26,9 @@ function seo(array $page = []): array
         'schema'      => [],
         'breadcrumbs' => [],
         'page'        => 1,
+        'canonical'   => '',
+        'og_title'    => '',
+        'og_description' => '',
     ];
 
     $title = trim($page['title']);
@@ -49,7 +53,9 @@ function seo(array $page = []): array
     return [
         'title'       => $title,
         'description' => $description,
-        'canonical'   => absolute_url($canonicalPath),
+        'canonical'   => $page['canonical'] !== '' && is_http_url($page['canonical']) ? $page['canonical'] : absolute_url($canonicalPath),
+        'og_title'    => trim((string) $page['og_title']) ?: $title,
+        'og_description' => str_limit(trim((string) $page['og_description']) ?: $description, 200),
         'robots'      => $page['robots'],
         'type'        => $page['type'],
         'image'       => preg_match('#^https?://#', $page['image']) ? $page['image'] : absolute_url($page['image']),
@@ -67,8 +73,8 @@ function seo_tags(array $seo): string
         '<meta name="robots" content="' . e($seo['robots']) . '">',
         '<link rel="canonical" href="' . e($seo['canonical']) . '">',
         '<meta property="og:site_name" content="' . e($seo['site_name']) . '">',
-        '<meta property="og:title" content="' . e($seo['title']) . '">',
-        '<meta property="og:description" content="' . e($seo['description']) . '">',
+        '<meta property="og:title" content="' . e($seo['og_title'] ?? $seo['title']) . '">',
+        '<meta property="og:description" content="' . e($seo['og_description'] ?? $seo['description']) . '">',
         '<meta property="og:url" content="' . e($seo['canonical']) . '">',
         '<meta property="og:type" content="' . e($seo['type']) . '">',
         '<meta property="og:image" content="' . e($seo['image']) . '">',

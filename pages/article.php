@@ -15,6 +15,9 @@ $seo = seo([
     'description' => $post['meta_description'] ?: $post['excerpt'],
     'path'        => $path,
     'type'        => 'article',
+    'canonical'   => (string) $post['canonical_url'],
+    'og_title'    => (string) $post['og_title'],
+    'og_description' => (string) $post['og_description'],
     'image'       => $post['featured_image'] ? '/' . $post['featured_image'] : '/assets/images/og-default.png',
     'breadcrumbs' => ['Home' => '/', 'Blog' => '/blog', $post['title'] => $path],
     'schema'      => [schema_article($post), schema_faq($faqs)],
@@ -27,6 +30,7 @@ require APP_ROOT . '/includes/header.php';
         <h1><?= e($post['title']) ?></h1>
         <p class="lead"><?= e($post['excerpt']) ?></p>
         <p class="article-meta">
+            <?php if ($post['category_slug']): ?><a class="article-category" href="<?= e(url('/blog/category/' . $post['category_slug'])) ?>"><?= e($post['category_name']) ?></a><?php endif; ?>
             <span>By <?= e($post['author_name'] ?? 'SYSCOM Team') ?></span>
             <span>Published <time datetime="<?= e(iso_date($post['published_at'])) ?>"><?= e(format_date($post['published_at'])) ?></time></span>
             <?php if (strtotime($post['updated_at']) > strtotime($post['published_at']) + 86400): ?>
@@ -72,6 +76,14 @@ require APP_ROOT . '/includes/header.php';
                 <a class="btn btn-primary btn-sm" href="<?= e(url('/services/' . $post['service_slug'])) ?>">View <?= e($post['service_name']) ?></a>
             </div>
         <?php endif; ?>
+        <div class="aside-card">
+            <h2>Related services</h2>
+            <ul class="aside-links">
+                <?php foreach (array_slice(array_filter(services_published(), fn($s) => $s['slug'] !== $post['service_slug']), 0, 4) as $s): ?>
+                    <li><a href="<?= e(url('/services/' . $s['slug'])) ?>"><?= icon($s['icon'], 'icon icon-sm') ?> <?= e($s['name']) ?></a></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     </aside>
 </div>
 
