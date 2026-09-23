@@ -5,7 +5,7 @@
 
 const SETTING_KEYS = [
     'site_name', 'site_tagline', 'site_description', 'contact_email', 'contact_phone',
-    'contact_address', 'main_site_url', 'social_profiles', 'internal_links_max',
+    'contact_address', 'main_site_url', 'social_profiles', 'internal_links_max', 'robots_extra', 'home_meta_title', 'logo_path',
 ];
 
 function settings_all(bool $refresh = false): array
