@@ -3,9 +3,12 @@
  * Admin UI helpers: layout, form controls, tables and pagination.
  */
 
-function admin_header(string $title, string $active = ''): void
+/**
+ * @param array $crumbs [label => admin path] shown in the top bar; the last item is the current page
+ */
+function admin_header(string $title, string $active = '', array $crumbs = []): void
 {
-    echo render_partial(APP_ROOT . '/admin/partials/layout-top.php', ['title' => $title, 'active' => $active, 'user' => current_user()]);
+    echo render_partial(APP_ROOT . '/admin/partials/layout-top.php', ['title' => $title, 'active' => $active, 'crumbs' => $crumbs, 'user' => current_user()]);
 }
 
 function admin_footer(): void
@@ -92,27 +95,10 @@ function seo_counter(string $field, int $min, int $max): string
     return '<span class="counter" data-count-for="f-' . e($field) . '" data-min="' . $min . '" data-max="' . $max . '"></span>';
 }
 
-function admin_empty(string $message, string $actionUrl = '', string $actionLabel = ''): string
+function admin_empty(string $message, string $actionUrl = '', string $actionLabel = '', string $icon = 'search', string $title = ''): string
 {
-    return '<div class="empty-state"><p>' . e($message) . '</p>'
+    return '<div class="empty-state"><span class="empty-icon">' . icon($icon) . '</span>'
+        . ($title !== '' ? '<h3>' . e($title) . '</h3>' : '')
+        . '<p>' . e($message) . '</p>'
         . ($actionUrl ? '<a class="btn btn-primary" href="' . e($actionUrl) . '">' . e($actionLabel) . '</a>' : '') . '</div>';
-}
-
-/** Short relative time for tables: "3 days ago". */
-function time_ago(?string $date): string
-{
-    if (!$date) {
-        return '—';
-    }
-    $diff = time() - strtotime($date);
-    if ($diff < 60) {
-        return 'just now';
-    }
-    foreach ([86400 * 30 => 'month', 86400 * 7 => 'week', 86400 => 'day', 3600 => 'hour', 60 => 'minute'] as $secs => $unit) {
-        if ($diff >= $secs) {
-            $n = (int) floor($diff / $secs);
-            return $n . ' ' . $unit . ($n > 1 ? 's' : '') . ' ago';
-        }
-    }
-    return 'just now';
 }

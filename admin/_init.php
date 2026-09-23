@@ -8,12 +8,18 @@
  */
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once APP_ROOT . '/includes/admin_ui.php';
+require_once APP_ROOT . '/includes/admin_components.php';
 require_once APP_ROOT . '/modules/keywords/keywords.php';
 require_once APP_ROOT . '/modules/backlinks/backlinks.php';
 require_once APP_ROOT . '/modules/audit/url_guard.php';
 require_once APP_ROOT . '/modules/audit/auditor.php';
 require_once APP_ROOT . '/modules/seo/content_health.php';
 require_once APP_ROOT . '/modules/ai/assistant.php';
+require_once APP_ROOT . '/modules/seo/checklist.php';
+require_once APP_ROOT . '/modules/seo/opportunities.php';
+require_once APP_ROOT . '/modules/analytics/analytics.php';
+require_once APP_ROOT . '/modules/distribution/distribution.php';
+require_once APP_ROOT . '/includes/notifications.php';
 
 if (!defined('ADMIN_PUBLIC')) {
     $user = require_admin($ADMIN_ROLES ?? ['admin', 'editor']);

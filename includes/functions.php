@@ -197,18 +197,38 @@ function json_response(array $data, int $status = 200): void
 function status_badge(string $status): string
 {
     $map = [
-        'published' => 'success', 'live' => 'success', 'active' => 'success', 'won' => 'success', 'mapped' => 'success',
+        'published' => 'success', 'live' => 'success', 'active' => 'success', 'converted' => 'success', 'mapped' => 'success', 'healthy' => 'success', 'passed' => 'success', 'done' => 'success',
         'draft' => 'muted', 'paused' => 'muted', 'closed' => 'muted', 'inactive' => 'muted', 'archived' => 'muted',
-        'new' => 'info', 'opportunity' => 'info', 'researching' => 'info',
+        'new' => 'info', 'opportunity' => 'info', 'researching' => 'info', 'scheduled' => 'info',
         'pending' => 'warning', 'submitted' => 'warning', 'contacted' => 'warning', 'qualified' => 'warning', 'targeting' => 'warning',
-        'rejected' => 'danger', 'lost' => 'danger', 'spam' => 'danger',
+        'rejected' => 'danger', 'spam' => 'danger', 'issue' => 'danger', 'needs attention' => 'danger', 'high' => 'danger',
+        'dismissed' => 'muted', 'planned' => 'info', 'skipped' => 'muted', 'in_progress' => 'warning', 'warning' => 'warning', 'medium' => 'warning', 'low' => 'muted',
     ];
     $tone = $map[strtolower($status)] ?? 'muted';
-    return '<span class="badge badge-' . $tone . '">' . e(ucfirst($status)) . '</span>';
+    return '<span class="badge badge-' . $tone . '">' . e(ucfirst(str_replace('_', ' ', $status))) . '</span>';
 }
 
 /** Health tone for a 0-100 score. */
 function score_tone(int $score): string
 {
     return $score >= 80 ? 'success' : ($score >= 50 ? 'warning' : 'danger');
+}
+
+/** Short relative time for tables: "3 days ago". */
+function time_ago(?string $date): string
+{
+    if (!$date) {
+        return '—';
+    }
+    $diff = time() - strtotime($date);
+    if ($diff < 60) {
+        return 'just now';
+    }
+    foreach ([86400 * 30 => 'month', 86400 * 7 => 'week', 86400 => 'day', 3600 => 'hour', 60 => 'minute'] as $secs => $unit) {
+        if ($diff >= $secs) {
+            $n = (int) floor($diff / $secs);
+            return $n . ' ' . $unit . ($n > 1 ? 's' : '') . ' ago';
+        }
+    }
+    return 'just now';
 }
