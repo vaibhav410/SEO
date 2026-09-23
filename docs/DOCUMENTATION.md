@@ -61,8 +61,8 @@ score, not a Google metric. This matches Google's guidance and SYSCOM's long-ter
 | Area | Outcome |
 | --- | --- |
 | Public pages | 9 page types, every one with a single H1, unique title and description, canonical, Open Graph and valid JSON-LD |
-| Admin modules | 11 (dashboard, articles, services, landing pages, FAQs, keywords, internal links, auditor, off-page, leads, settings) |
-| Automated tests | **72 passing** unit and HTTP integration tests |
+| Admin modules | 17 (dashboard, analytics, opportunities, blog posts, categories, FAQs, landing pages, services, keywords, internal links, SEO auditor, technical SEO incl. schema/sitemap/robots, backlinks, organic distribution, leads, search, settings incl. users) |
+| Automated tests | **89 passing** unit and HTTP integration tests |
 | Live audit of syscom.co.in | 69/100 internal score, with concrete, fixable findings (see §14.3) |
 
 ![Admin dashboard](screenshots/admin-dashboard.png)
@@ -299,6 +299,30 @@ schema types and HTTPS usage. Results are saved with history per URL.
 
 ## 8. Module architecture
 
+### 8.1 Growth operating system (admin)
+
+The admin is organised around the growth loop rather than around database tables:
+
+| Area | Screens | What makes it useful |
+| --- | --- | --- |
+| Overview | Dashboard, Analytics, Opportunities | Real KPIs with 30-day trends; loop stages link to the work; opportunities explain *why* and *what to do* |
+| Content | Blog posts, Categories, FAQs, Landing pages, Services | Checklist score on every row; editors with SERP preview, canonical/OG/schema fields, detected internal links, related content and history |
+| SEO | Keywords, Internal links, SEO auditor, Technical SEO | Keyword → page → service → lead mapping; existing/suggested/missing links; audit findings with recommended fixes; schema, sitemap and robots management |
+| Off-page | Backlinks, Organic distribution | Pipeline by section (directories, listings, communities, partners, content, social) with live verification; social shares logged per article |
+| Growth | Leads | CRM-style list and detail with source page, keyword, campaign, status pipeline, notes and timeline |
+
+**Data honesty.** Organic traffic, landing-page visits, rankings, search volume and keyword difficulty need Google Analytics, Search Console or a keyword tool. GrowthHub shows these as *not connected* / *data unavailable* rather than placeholder numbers. Every trend (for example "+100%") is computed from real database rows, and the schema check is labelled as a local check, not Google's validator.
+
+**Design system.** `assets/css/admin.css` defines tokens (colour, radius, shadow, type) and components: buttons, inputs, KPI cards, SVG bar and donut charts (server-rendered, no library, CSP-safe), tables that turn into cards on mobile, tabs, badges, status indicators, tooltips, dropdowns, toasts, a confirmation dialog, skeleton loaders, empty states and a timeline. PHP helpers in `includes/admin_components.php` render them consistently.
+
+![Keyword detail](screenshots/admin-keyword-detail.png)
+
+![Opportunity centre](screenshots/admin-opportunities.png)
+
+![Technical SEO](screenshots/admin-technical-seo.png)
+
+### 8.2 Modules
+
 | Module (`modules/`) | Responsibility | Admin screen |
 | --- | --- | --- |
 | `content/posts.php` | Article queries, scheduling rule, search, validation, persistence | Articles |
@@ -312,6 +336,15 @@ schema types and HTTPS usage. Results are saved with history per URL.
 | `backlinks/backlinks.php` | Off-page pipeline and live link verification | Off-page / backlinks |
 | `leads/leads.php` | Lead capture, spam defences, inbox queries, source attribution | Leads |
 | `seo/content_health.php` | Database-wide SEO issue detection | Dashboard |
+| `seo/checklist.php` | Per-page editorial SEO checklist (title, description, H1, keyword, links, alt, canonical, OG, schema, depth) | Content lists and editors |
+| `seo/technical.php` | Sitemap entries, robots.txt builder/validator, schema inventory and local property check, technical overview | Technical SEO |
+| `seo/opportunities.php` | Computed growth opportunities with saved done/dismissed state | Opportunities |
+| `analytics/analytics.php` | Real 30-day trends, weekly lead series, content output, keyword and lead distributions | Dashboard, Analytics |
+| `categories/categories.php` | Blog categories and `/blog/category/{slug}` archives | Categories |
+| `distribution/distribution.php` | Organic distribution (social/community shares per article) | Organic distribution |
+| `search/search.php` | Public site search and global admin search | `/search`, top bar |
+| `includes/activity.php` | Activity timeline for every record | Dashboard, record histories |
+| `includes/notifications.php` | Notification centre derived from live data | Top bar |
 | `settings/settings.php` | Cached key/value settings | Settings |
 | `ai/assistant.php` | Optional AI meta/outline drafts | Buttons in editors |
 
@@ -399,7 +432,7 @@ by landing page.
 
 ## 13. Testing
 
-`php tests/run.php` runs **72 automated tests** (no dependencies). Integration tests use a separate
+`php tests/run.php` runs **89 automated tests** (no dependencies). Integration tests use a separate
 `syscom_growthhub_test` database and their own server on port 8099.
 
 | Area | Cases covered | Result |
@@ -413,6 +446,9 @@ by landing page.
 | Security helpers | Markdown XSS, `javascript:` links, schema `</script>` escape, CIDR maths, IPv6 and IPv4-mapped addresses, signed timing tokens | ✅ |
 | Internal linking | first occurrence only, skips headings/links/code, no self-links, respects author links, per-page cap, whole-phrase matching | ✅ |
 | Error handling | DB outage → 503 page with no SQL or credentials shown (manual); missing content → 404 | ✅ |
+| Growth OS screens | every admin screen renders; dashboard shows "not connected" states instead of invented traffic; schema inventory has no errors; robots.txt editor rejects `Disallow: /`; editors blocked from robots/settings; categories, distribution, opportunities, notifications, users | ✅ |
+| Attribution | landing-page leads record keyword and sanitised utm campaign; lead activity logged | ✅ |
+| Migration | `002_growth_os.sql` upgrades a database created from the previous schema (statuses remapped, tables added) | ✅ (manual) |
 | Responsive | Desktop 1440 px, tablet, mobile 375/390 px checked in Chromium: no horizontal overflow, working menu, no console errors (manual, Playwright) | ✅ |
 
 Mobile views:

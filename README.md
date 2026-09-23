@@ -40,6 +40,11 @@ The SEO health score is labelled everywhere as an internal checklist score.
 | **Lead generation** | Contact and landing-page forms with CSRF, honeypot, signed timing token, rate limiting and source-page attribution. Lead inbox with CSV export |
 | **Content health** | Dashboard panel that finds missing or duplicate meta tags, thin articles, keyword cannibalisation and broken keyword mappings |
 | **AI assistant** *(optional)* | Suggests meta titles/descriptions and article outlines via OpenRouter. Drafts only; disabled unless a key is configured |
+| **Growth dashboard** | KPI cards with real 30-day trends, an interactive six-stage growth loop (keyword → content → landing page → internal links → discovery → lead), lead trend chart, top opportunities, activity timeline |
+| **Opportunity centre** | Keyword, content-gap, internal-link, landing-page, backlink and technical opportunities computed from the site's own data, each with reason, recommended action and a done/dismiss workflow |
+| **Technical SEO** | Health cards (indexability, crawlability, canonicals, sitemap, robots, meta, OpenGraph, schema, URLs, headings, images, mobile, accessibility), structured-data inventory with a local property check, sitemap manager, robots.txt editor with validation |
+| **Analytics** | Leads, conversion, content output, keyword coverage and off-page charts from real data; traffic and rankings clearly shown as *not connected* instead of estimated |
+| **Admin UX** | Global search with typeahead (press `/`), notification centre, quick actions, breadcrumbs, sortable/filterable tables that become cards on mobile, confirmation modals, toasts, loading skeletons, activity history on every record, users & roles |
 
 ## 3. Architecture
 
@@ -65,7 +70,8 @@ syscom-growthhub/
 ├── .htaccess            rewrites, private folders, caching
 ├── config/              config.php, config.local.example.php, database.php
 ├── includes/            bootstrap, auth, csrf, flash, security, seo, schema, markdown, validation, uploads, ui
-├── modules/             content, services, landing-pages, faqs, keywords, linking, backlinks, leads, audit, seo, settings, ai
+├── modules/             content, categories, services, landing-pages, faqs, keywords, linking, backlinks, distribution,
+│                        leads, audit, seo (health, checklist, technical, opportunities), analytics, search, settings, ai
 ├── pages/               public page templates
 ├── admin/               admin screens (dashboard, CRUD, auditor, settings)
 ├── api/                 JSON endpoints
@@ -104,6 +110,9 @@ git clone https://github.com/vaibhav410/SEO.git syscom-growthhub
 **Option A: phpMyAdmin**
 1. Open `http://localhost/phpmyadmin` → **Import** → choose `database/schema.sql` → Go.
 2. Import `database/seed.sql` the same way to load demo content.
+
+**Upgrading an existing install** (created before categories, analytics and opportunities were added):
+`mysql -u root -p syscom_growthhub < database/migrations/002_growth_os.sql`
 
 **Option B: command line**
 ```bash
@@ -192,7 +201,7 @@ php -S 127.0.0.1:8080 router.php
 ## 13. Testing
 
 ```bash
-php tests/run.php          # 72 unit + integration tests
+php tests/run.php          # 89 unit + integration tests
 php tests/run.php --unit   # unit tests only (no DB needed)
 ```
 
