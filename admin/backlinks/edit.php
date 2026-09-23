@@ -13,14 +13,16 @@ $values = $link ?? ['platform' => '', 'type' => 'directory', 'source_url' => '',
 if (is_post()) {
     [$data, $errors] = backlink_validate($_POST);
     if (!$errors) {
+        $isNew = !$id;
         $id ? db_update('backlinks', $id, $data) : ($id = db_insert('backlinks', $data));
+        log_activity($isNew ? 'created' : 'status', 'backlink', $id, $data['platform'] . ': ' . ($isNew ? 'opportunity added' : 'marked ' . $data['status']));
         flash('success', 'Record saved.');
-        redirect('/admin/backlinks/edit.php?id=' . $id);
+        redirect('/admin/backlinks/view.php?id=' . $id);
     }
     $values = array_merge($values, $data);
 }
 
-admin_header($id ? 'Edit off-page record' : 'New off-page record', 'backlinks');
+admin_header($id ? 'Edit off-page record' : 'New off-page record', 'backlinks', ['Off-page' => '/admin/backlinks/', 'Backlinks' => '/admin/backlinks/', $id ? 'Edit' : 'New' => null]);
 ?>
 <div class="page-head">
     <div><h1><?= $id ? 'Edit record' : 'New off-page record' ?></h1><p><a href="<?= e(url('/admin/backlinks/')) ?>">&larr; Off-page tracker</a></p></div>

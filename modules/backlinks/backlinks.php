@@ -99,3 +99,20 @@ function backlink_verify(array $backlink): array
     }
     return ['found' => false, 'rel' => 'unknown', 'anchor' => '', 'message' => 'No link to ' . $targetHost . ' was found on the source page.'];
 }
+
+/** Verify a backlink, store the result on the record and log it. */
+function backlink_verify_and_save(array $link): array
+{
+    $result = backlink_verify($link);
+    $update = ['last_checked_at' => date('Y-m-d H:i:s'), 'verification_message' => mb_substr($result['message'], 0, 255)];
+    if ($result['found']) {
+        $update['rel'] = $result['rel'];
+        $update['status'] = 'live';
+        if (!$link['anchor_text']) {
+            $update['anchor_text'] = $result['anchor'];
+        }
+    }
+    db_update('backlinks', (int) $link['id'], $update);
+    log_activity('verified', 'backlink', (int) $link['id'], $link['platform'] . ': ' . ($result['found'] ? 'link verified live' : 'link not found'));
+    return $result;
+}

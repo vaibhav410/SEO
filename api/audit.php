@@ -19,4 +19,5 @@ $result = audit_run($url, (int) $user['id']);
 if (!$result['id']) {
     json_response(['ok' => false, 'error' => $result['error']], 422);
 }
+log_activity('audited', 'audit', $result['id'], 'Audited ' . str_limit($url, 80));
 json_response(['ok' => true, 'id' => $result['id'], 'redirect' => url('/admin/audits/view.php?id=' . $result['id'])]);

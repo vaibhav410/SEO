@@ -6,7 +6,7 @@
  * per-IP rate limit (hashed IP), then strict validation.
  */
 
-const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'won', 'lost', 'spam'];
+const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'converted', 'closed', 'spam'];
 const LEAD_RATE_LIMIT = 3;          // submissions ...
 const LEAD_RATE_WINDOW_MINUTES = 10; // ... per this many minutes per visitor
 const LEAD_MIN_SECONDS = 3;          // humans take longer than this to fill the form
@@ -15,7 +15,15 @@ const LEAD_MIN_SECONDS = 3;          // humans take longer than this to fill the
 function lead_form_state(): array
 {
     [$old, $errors] = take_form_state();
-    return ['old' => $old, 'errors' => $errors, 'ts' => lead_time_token(), 'interests' => array_column(services_published(), 'name')];
+    return ['old' => $old, 'errors' => $errors, 'ts' => lead_time_token(), 'interests' => array_column(services_published(), 'name'),
+        'campaign' => lead_campaign(input('utm_campaign', '', 'get') ?: input('utm_source', '', 'get'))];
+}
+
+/** Campaign label from utm_* parameters, reduced to a safe token (letters, digits, - _ .). */
+function lead_campaign(string $value): ?string
+{
+    $value = strtolower(trim($value));
+    return preg_match('/^[a-z0-9._-]{1,100}$/', $value) ? $value : null;
 }
 
 /** Signed timestamp so the minimum-fill-time check cannot be forged. */
@@ -37,9 +45,9 @@ function lead_time_ok(string $token): bool
 
 /**
  * Handle a POSTed lead form and redirect back (Post/Redirect/Get).
- * $sourcePage is decided by the server from the route, never trusted from the form.
+ * $sourcePage and $keyword are decided by the server from the route, never trusted from the form.
  */
-function lead_handle_submission(string $sourcePage): void
+function lead_handle_submission(string $sourcePage, ?string $keyword = null): void
 {
     csrf_verify();
     $back = $sourcePage . '#lead-form';
@@ -68,8 +76,11 @@ function lead_handle_submission(string $sourcePage): void
     }
 
     $data['source_page'] = mb_substr($sourcePage, 0, 255);
+    $data['keyword'] = $keyword !== null ? mb_substr($keyword, 0, 150) : null;
+    $data['campaign'] = lead_campaign(input('campaign'));
     $data['ip_hash'] = ip_hash();
-    db_insert('leads', $data);
+    $id = db_insert('leads', $data);
+    log_activity('received', 'lead', $id, 'New lead from ' . $data['name'] . ' via ' . $sourcePage, null);
 
     flash('success', 'Thank you, ' . $data['name'] . '. Our team will get back to you within one business day.');
     redirect($back);
@@ -105,11 +116,28 @@ function lead_old_input(): array
         array_flip(['name', 'email', 'phone', 'company', 'interest', 'message']));
 }
 
-function leads_admin_list(string $status, string $search, int $limit, int $offset, string $source = ''): array
+const LEAD_SORTS = ['name' => 'name', 'status' => "FIELD(status, 'new', 'contacted', 'qualified', 'converted', 'closed', 'spam')", 'created' => 'created_at', 'source' => 'source_page'];
+
+function leads_admin_list(string $status, string $search, int $limit, int $offset, string $source = '', string $orderBy = ' ORDER BY created_at DESC'): array
 {
     [$where, $params] = leads_admin_filter($status, $search, $source);
-    return db_all('SELECT id, name, email, phone, company, interest, source_page, status, created_at FROM leads'
-        . $where . ' ORDER BY created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset, $params);
+    return db_all('SELECT id, name, email, phone, company, interest, source_page, keyword, campaign, status, created_at FROM leads'
+        . $where . $orderBy . ' LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset, $params);
+}
+
+/** Human label for where a lead came from. */
+function lead_source_label(array $lead): string
+{
+    if (!empty($lead['campaign'])) {
+        return 'Campaign: ' . $lead['campaign'];
+    }
+    $page = (string) $lead['source_page'];
+    return match (true) {
+        $page === '/contact' => 'Contact form',
+        str_starts_with($page, '/blog/') => 'Blog guide',
+        str_starts_with($page, '/services/') => 'Service page',
+        default => 'Landing page',
+    };
 }
 
 function leads_admin_count(string $status, string $search, string $source = ''): int
@@ -131,9 +159,9 @@ function leads_admin_filter(string $status, string $search, string $source = '')
         $params[] = $status;
     }
     if ($search !== '') {
-        $clauses[] = '(name LIKE ? OR email LIKE ? OR company LIKE ?)';
+        $clauses[] = '(name LIKE ? OR email LIKE ? OR company LIKE ? OR keyword LIKE ?)';
         $like = '%' . addcslashes($search, '%_\\') . '%';
-        array_push($params, $like, $like, $like);
+        array_push($params, $like, $like, $like, $like);
     }
     return [$clauses ? ' WHERE ' . implode(' AND ', $clauses) : '', $params];
 }
@@ -142,7 +170,7 @@ function leads_admin_filter(string $status, string $search, string $source = '')
 function leads_by_source(int $limit = 8): array
 {
     return db_all(
-        "SELECT source_page, COUNT(*) AS total, SUM(status IN ('qualified','won')) AS qualified
+        "SELECT source_page, COUNT(*) AS total, SUM(status IN ('qualified','converted')) AS qualified
          FROM leads WHERE status <> 'spam' GROUP BY source_page ORDER BY total DESC LIMIT " . (int) $limit
     );
 }

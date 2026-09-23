@@ -429,3 +429,73 @@ function audits_recent(int $limit = 20, int $offset = 0): array
     return db_all('SELECT id, url, final_url, http_status, overall_score, response_ms, created_at FROM seo_audits
                    ORDER BY created_at DESC, id DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset);
 }
+
+/** Recommended fix for each check, shown when it does not pass. */
+const AUDIT_FIXES = [
+    'title' => 'Write one unique, descriptive <title> of roughly 30–60 characters that includes the page topic.',
+    'description' => 'Add a meta description of 70–160 characters that summarises the page and invites the click.',
+    'h1' => 'Use exactly one H1 that states the main topic; demote other H1s to H2/H3.',
+    'heading' => 'Break content into H2 sections and do not skip levels (H2 → H3, not H2 → H4).',
+    'canonical' => 'Add <link rel="canonical" href="https://…"> with the absolute preferred URL of this page.',
+    'robots' => 'Remove the noindex directive (meta robots or X-Robots-Tag) if this page should appear in search.',
+    'og' => 'Add og:title, og:description, og:image (1200×630) and og:url so shared links look right.',
+    'schema' => 'Add JSON-LD structured data that describes visible content (Organization, Article, Service, FAQPage, BreadcrumbList).',
+    'alt' => 'Give every meaningful image descriptive alt text; use alt="" for purely decorative images.',
+    'internal_link' => 'Link to at least three relevant pages on the same site with descriptive anchor text.',
+    'external' => 'Where helpful, cite authoritative sources; external links are informational and do not affect this score.',
+    'viewport' => 'Add <meta name="viewport" content="width=device-width, initial-scale=1"> and a responsive layout.',
+    'lang' => 'Declare the page language, e.g. <html lang="en-IN">.',
+    'http' => 'Serve the page over HTTPS and 301-redirect HTTP to HTTPS.',
+];
+
+/**
+ * One row per check for the audit report UI.
+ * @return array<array{key: string, label: string, status: string, finding: string, fix: ?string, score: ?int}>
+ */
+function audit_report_rows(array $audit): array
+{
+    $byCheck = [];
+    foreach ($audit['issues'] as $i) {
+        $byCheck[$i['check']][] = $i;
+    }
+    $stats = $audit['stats'] ?? [];
+    $worst = function (array $items): string {
+        $order = ['fail' => 0, 'warn' => 1, 'info' => 2, 'pass' => 3];
+        usort($items, fn($a, $b) => ($order[$a['status']] ?? 9) <=> ($order[$b['status']] ?? 9));
+        return $items[0]['status'] ?? 'info';
+    };
+    $row = function (string $key, string $label, array $items, ?int $score) use ($worst) {
+        $status = $items ? $worst($items) : 'info';
+        return ['key' => $key, 'label' => $label, 'status' => $status === 'info' ? 'pass' : $status,
+            'finding' => implode(' ', array_column($items, 'message')) ?: '—',
+            'fix' => in_array($status, ['warn', 'fail'], true) ? (AUDIT_FIXES[$key] ?? null) : null, 'score' => $score];
+    };
+
+    $mobile = $byCheck['mobile'] ?? [];
+    $viewport = array_values(array_filter($mobile, fn($i) => str_contains($i['message'], 'viewport')));
+    $lang = array_values(array_filter($mobile, fn($i) => str_contains($i['message'], 'lang')));
+    if (!$viewport && $mobile && (int) $audit['mobile_score'] >= 70) {
+        $viewport = [['status' => 'pass', 'message' => 'Responsive viewport meta tag present.']];
+    }
+    if (!$lang && $mobile && preg_match('/language: (\S+)/', implode(' ', array_column($mobile, 'message')), $m)) {
+        $lang = [['status' => 'pass', 'message' => 'Language declared: ' . rtrim($m[1], '.') . '.']];
+    }
+    $external = isset($stats['external_links'])
+        ? [['status' => 'info', 'message' => (int) $stats['external_links'] . ' external link(s), ' . (int) ($stats['nofollow_links'] ?? 0) . ' nofollow.']] : [];
+
+    return [
+        $row('title', 'Title', $byCheck['title'] ?? [], (int) $audit['title_score']),
+        $row('description', 'Meta description', $byCheck['description'] ?? [], (int) $audit['description_score']),
+        $row('h1', 'H1', $byCheck['h1'] ?? [], (int) $audit['h1_score']),
+        $row('heading', 'H2 structure', $byCheck['heading'] ?? [], (int) $audit['heading_score']),
+        $row('canonical', 'Canonical', $byCheck['canonical'] ?? [], (int) $audit['canonical_score']),
+        $row('robots', 'Robots', $byCheck['robots'] ?? [], (int) $audit['robots_score']),
+        $row('og', 'OpenGraph', $byCheck['og'] ?? [], (int) $audit['og_score']),
+        $row('schema', 'Structured data', $byCheck['schema'] ?? [], (int) $audit['schema_score']),
+        $row('alt', 'Image alt text', $byCheck['alt'] ?? [], (int) $audit['alt_score']),
+        $row('internal_link', 'Internal links', $byCheck['internal_link'] ?? [], (int) $audit['internal_link_score']),
+        $row('external', 'External links', $external, null),
+        $row('viewport', 'Mobile / viewport', $viewport, null),
+        $row('lang', 'Language attribute', $lang, null),
+    ];
+}
