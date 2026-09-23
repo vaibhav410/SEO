@@ -35,9 +35,13 @@ function landing_find(int $id): ?array
 function landing_admin_list(): array
 {
     return db_all(
-        'SELECT l.id, l.title, l.slug, l.primary_keyword, l.status, l.meta_title, l.meta_description, l.updated_at,
-                (SELECT COUNT(*) FROM leads d WHERE d.source_page = CONCAT(\'/\', l.slug)) AS lead_count
-         FROM landing_pages l ORDER BY l.updated_at DESC'
+        'SELECT l.*, s.name AS service_name, k.intent,
+                (SELECT COUNT(*) FROM leads d WHERE d.source_page = CONCAT(\'/\', l.slug)) AS lead_count,
+                (SELECT COUNT(*) FROM faqs f WHERE f.landing_page_id = l.id) AS faq_count
+         FROM landing_pages l
+         LEFT JOIN services s ON s.id = l.service_id
+         LEFT JOIN keywords k ON k.keyword = l.primary_keyword
+         ORDER BY l.updated_at DESC'
     );
 }
 
@@ -59,6 +63,9 @@ function landing_validate(array $input, ?int $id = null): array
         'use_cases'        => 'max:5000',
         'content'          => 'max:60000',
         'cta_text'         => 'required|max:150',
+        'canonical_url'    => 'url|max:255',
+        'og_title'         => 'max:100',
+        'og_description'   => 'max:200',
         'service_id'       => 'int',
         'status'           => 'required|in:draft,published',
     ], ['problem' => 'The problem section', 'solution' => 'The solution section']);

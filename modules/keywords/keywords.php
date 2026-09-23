@@ -9,11 +9,19 @@
 const KEYWORD_INTENTS = ['informational', 'navigational', 'commercial', 'transactional'];
 const KEYWORD_PRIORITIES = ['high', 'medium', 'low'];
 const KEYWORD_STATUSES = ['researching', 'targeting', 'mapped', 'paused'];
+const KEYWORD_CONTENT_TYPES = ['guide' => 'Blog guide', 'landing_page' => 'Landing page', 'service_page' => 'Service page', 'home' => 'Home page', 'faq' => 'FAQ'];
+const KEYWORD_SORTS = ['keyword' => 'k.keyword', 'intent' => 'k.intent', 'priority' => "FIELD(k.priority, 'high', 'medium', 'low')", 'status' => 'k.status', 'updated' => 'k.updated_at'];
 
-function keywords_admin_list(array $filters): array
+function keywords_admin_list(array $filters, string $orderBy = " ORDER BY FIELD(k.priority, 'high', 'medium', 'low') ASC, k.keyword"): array
 {
     [$where, $params] = keywords_filter($filters);
-    return db_all("SELECT * FROM keywords{$where} ORDER BY FIELD(priority, 'high', 'medium', 'low'), keyword", $params);
+    return db_all("SELECT k.*, s.name AS service_name FROM keywords k LEFT JOIN services s ON s.id = k.service_id{$where}{$orderBy}", $params);
+}
+
+/** Suggested content type for a keyword based on its intent. */
+function keyword_recommended_type(string $intent): string
+{
+    return ['informational' => 'guide', 'navigational' => 'home', 'commercial' => 'landing_page', 'transactional' => 'service_page'][$intent] ?? 'guide';
 }
 
 function keywords_filter(array $f): array
@@ -22,12 +30,12 @@ function keywords_filter(array $f): array
     $params = [];
     foreach (['intent' => KEYWORD_INTENTS, 'priority' => KEYWORD_PRIORITIES, 'status' => KEYWORD_STATUSES] as $col => $allowed) {
         if (!empty($f[$col]) && in_array($f[$col], $allowed, true)) {
-            $clauses[] = "$col = ?";
+            $clauses[] = "k.$col = ?";
             $params[] = $f[$col];
         }
     }
     if (!empty($f['q'])) {
-        $clauses[] = 'keyword LIKE ?';
+        $clauses[] = 'k.keyword LIKE ?';
         $params[] = '%' . addcslashes($f['q'], '%_\\') . '%';
     }
     return [$clauses ? ' WHERE ' . implode(' AND ', $clauses) : '', $params];
@@ -48,8 +56,14 @@ function keyword_validate(array $input, ?int $id = null): array
         'priority'   => 'required|in:' . implode(',', KEYWORD_PRIORITIES),
         'target_url' => 'path_or_url|max:255',
         'status'     => 'required|in:' . implode(',', KEYWORD_STATUSES),
+        'content_type' => 'in:' . implode(',', array_keys(KEYWORD_CONTENT_TYPES)),
+        'service_id' => 'int',
         'notes'      => 'max:2000',
-    ], ['target_url' => 'Target URL']);
+    ], ['target_url' => 'Target URL', 'content_type' => 'content type', 'service_id' => 'service']);
+    $data['service_id'] = $data['service_id'] ? (int) $data['service_id'] : null;
+    if ($data['service_id'] && !service_find($data['service_id'])) {
+        $errors['service_id'] = 'Choose a valid service.';
+    }
     if (!isset($errors['keyword']) && db_value('SELECT 1 FROM keywords WHERE keyword = ? AND id <> ?', [$data['keyword'], $id ?? 0])) {
         $errors['keyword'] = 'This keyword is already in the plan.';
     }
@@ -72,7 +86,7 @@ function content_at_path(?string $path): ?array
 
     if ($path === '/') {
         return ['type' => 'Home page', 'title' => setting('site_name') . ' ' . setting('site_tagline'),
-            'meta_title' => 'Web Hosting, Domains & Business Email in India', 'meta_description' => setting('site_description'),
+            'meta_title' => setting('home_meta_title', 'Web Hosting, Domains & Business Email in India'), 'meta_description' => setting('site_description'),
             'body' => setting('site_description'), 'edit' => '/admin/settings/'];
     }
     if (preg_match('#^/services/([a-z0-9-]+)$#', $path, $m)) {

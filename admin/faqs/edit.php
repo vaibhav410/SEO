@@ -14,7 +14,9 @@ if (is_post()) {
     [$data, $errors] = faq_validate($_POST);
     $owner = input('owner');
     if (!$errors) {
+        $isNew = !$id;
         $id ? db_update('faqs', $id, $data) : ($id = db_insert('faqs', $data));
+        log_activity($isNew ? 'created' : 'updated', 'faq', $id, 'FAQ “' . str_limit($data['question'], 80) . '” ' . ($isNew ? 'added' : 'updated'));
         flash('success', 'FAQ saved.');
         redirect('/admin/faqs/edit.php?id=' . $id);
     }
@@ -33,7 +35,7 @@ foreach (db_all('SELECT id, title FROM posts ORDER BY updated_at DESC') as $r) {
     $owners['post:' . $r['id']] = 'Article – ' . str_limit($r['title'], 70);
 }
 
-admin_header($id ? 'Edit FAQ' : 'New FAQ', 'faqs');
+admin_header($id ? 'Edit FAQ' : 'New FAQ', 'faqs', ['Content' => '/admin/posts/', 'FAQs' => '/admin/faqs/', $id ? 'Edit' : 'New' => null]);
 ?>
 <div class="page-head">
     <div><h1><?= $id ? 'Edit FAQ' : 'New FAQ' ?></h1><p><a href="<?= e(url('/admin/faqs/')) ?>">&larr; All FAQs</a></p></div>

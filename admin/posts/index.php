@@ -10,76 +10,82 @@ if (is_post()) {
     }
     if ($action === 'delete') {
         post_delete($id);
+        log_activity('deleted', 'post', null, 'Article “' . $post['title'] . '” deleted');
         flash('success', 'Article “' . $post['title'] . '” deleted.');
     } elseif (in_array($action, ['publish', 'unpublish'], true)) {
         $data = $action === 'publish'
             ? ['status' => 'published', 'published_at' => $post['published_at'] ?: date('Y-m-d H:i:s')]
             : ['status' => 'draft'];
         db_update('posts', $id, $data);
+        log_activity($action === 'publish' ? 'published' : 'unpublished', 'post', $id, 'Article “' . $post['title'] . '” ' . ($action === 'publish' ? 'published' : 'moved to drafts'));
         flash('success', 'Article ' . ($action === 'publish' ? 'published.' : 'moved to drafts.'));
     }
     redirect('/admin/posts/' . query_with([]));
 }
 
-$status = input('status', '', 'get');
-$search = mb_substr(input('q', '', 'get'), 0, 100);
-$pager = paginate(posts_admin_count($status, $search), 20);
-$posts = posts_admin_list($status, $search, $pager['per_page'], $pager['offset']);
+$filters = ['status' => input('status', '', 'get'), 'q' => mb_substr(input('q', '', 'get'), 0, 100), 'category' => input_int('category')];
+$pager = paginate(posts_admin_count($filters), 15);
+$posts = posts_admin_list($filters, $pager['per_page'], $pager['offset'], sort_sql(POST_SORTS, 'updated'));
+$counts = db_one("SELECT COUNT(*) total, SUM(status = 'published' AND published_at <= NOW()) published, SUM(status = 'draft') draft,
+                  SUM(status = 'published' AND published_at > NOW()) scheduled FROM posts");
+$categories = categories_all();
 
-admin_header('Articles', 'posts');
+admin_header('Blog posts', 'posts', ['Content' => '/admin/posts/', 'Blog posts' => null]);
+echo page_header('Blog posts', 'Guides that answer informational searches and link readers to the right service.',
+    '<a class="btn btn-primary" href="' . e(url('/admin/posts/edit.php')) . '">' . icon('book', 'icon icon-sm') . ' New post</a>');
 ?>
-<div class="page-head">
-    <div><h1>Articles</h1><p>Blog content that targets informational keywords and links to services.</p></div>
-    <a class="btn btn-primary" href="<?= e(url('/admin/posts/edit.php')) ?>">New article</a>
-</div>
+<nav class="tabs" aria-label="Status">
+    <?php foreach (['' => ['All', $counts['total']], 'published' => ['Published', $counts['published']], 'scheduled' => ['Scheduled', $counts['scheduled']], 'draft' => ['Drafts', $counts['draft']]] as $s => [$label, $n]): ?>
+        <a href="<?= e(url('/admin/posts/') . query_with(['status' => $s ?: null, 'page' => null])) ?>"<?= $filters['status'] === $s ? ' aria-current="page"' : '' ?>><?= $label ?><span class="count"><?= (int) $n ?></span></a>
+    <?php endforeach; ?>
+</nav>
 
 <form class="filters" method="get">
-    <div class="field"><label for="q">Search</label><input type="search" id="q" name="q" value="<?= e($search) ?>" placeholder="Title contains…"></div>
-    <div class="field"><label for="status">Status</label>
-        <select id="status" name="status">
-            <option value="">All</option>
-            <?php foreach (['published' => 'Published', 'draft' => 'Draft'] as $v => $l): ?>
-                <option value="<?= $v ?>"<?= $status === $v ? ' selected' : '' ?>><?= $l ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <button class="btn btn-outline" type="submit">Filter</button>
+    <input type="hidden" name="status" value="<?= e($filters['status']) ?>">
+    <div class="field"><label for="q">Search</label><input type="search" id="q" name="q" value="<?= e($filters['q']) ?>" placeholder="Title or keyword…"></div>
+    <div class="field"><label for="category">Category</label>
+        <select id="category" name="category"><option value="">All categories</option>
+            <?php foreach ($categories as $c): ?><option value="<?= (int) $c['id'] ?>"<?= $filters['category'] === (int) $c['id'] ? ' selected' : '' ?>><?= e($c['name']) ?></option><?php endforeach; ?>
+        </select></div>
+    <button class="btn btn-outline" type="submit">Apply filters</button>
+    <?php if ($filters['q'] || $filters['category']): ?><a class="btn btn-ghost" href="<?= e(url('/admin/posts/')) ?>">Clear</a><?php endif; ?>
 </form>
 
 <?php if ($posts): ?>
-<div class="table-wrap"><table>
-    <thead><tr><th>Title</th><th>Keyword</th><th>SEO meta</th><th>Status</th><th>Updated</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+<div class="table-wrap"><table class="table-cards">
+    <thead><tr>
+        <?= th_sort('title', 'Title', 'updated') ?><?= th_sort('category', 'Category', 'updated') ?><th>Target keyword</th><?= th_sort('status', 'Status', 'updated') ?>
+        <th>Author</th><?= th_sort('published', 'Published', 'updated') ?><th>SEO status</th><th><span class="visually-hidden">Actions</span></th>
+    </tr></thead>
     <tbody>
     <?php foreach ($posts as $p):
-        $titleState = seo_length_status($p['meta_title'] ?: $p['title'], 25, SEO_TITLE_MAX);
-        $descState = seo_length_status((string) $p['meta_description'], 70, SEO_DESCRIPTION_MAX); ?>
+        $checklist = content_checklist($p, 'post');
+        $scheduled = $p['status'] === 'published' && strtotime((string) $p['published_at']) > time(); ?>
         <tr>
-            <td><a href="<?= e(url('/admin/posts/edit.php?id=' . $p['id'])) ?>"><strong><?= e($p['title']) ?></strong></a><span class="sub">/blog/<?= e($p['slug']) ?></span></td>
-            <td><?= e($p['primary_keyword'] ?: '—') ?></td>
-            <td class="nowrap">
-                <span class="badge badge-<?= $titleState === 'ok' ? 'success' : 'warning' ?>" title="Meta title <?= e($titleState) ?>">Title</span>
-                <span class="badge badge-<?= $descState === 'ok' ? 'success' : ($descState === 'missing' ? 'danger' : 'warning') ?>" title="Meta description <?= e($descState) ?>">Desc</span>
-            </td>
-            <td><?= status_badge($p['status']) ?><?php if ($p['status'] === 'published' && strtotime((string) $p['published_at']) > time()): ?> <span class="badge badge-info">Scheduled</span><?php endif; ?></td>
-            <td class="nowrap muted"><?= e(time_ago($p['updated_at'])) ?></td>
-            <td>
-                <div class="row-actions">
-                    <a href="<?= e(url('/admin/posts/edit.php?id=' . $p['id'])) ?>">Edit</a>
-                    <?php if ($p['status'] === 'published'): ?>
-                        <a href="<?= e(url('/blog/' . $p['slug'])) ?>" target="_blank" rel="noopener">View</a>
-                        <?= action_button('', 'Unpublish', ['id' => $p['id'], 'action' => 'unpublish']) ?>
-                    <?php else: ?>
-                        <?= action_button('', 'Publish', ['id' => $p['id'], 'action' => 'publish']) ?>
-                    <?php endif; ?>
-                    <?= action_button('', 'Delete', ['id' => $p['id'], 'action' => 'delete'], 'btn-link danger', 'Delete this article permanently? Its FAQs will be deleted too.') ?>
-                </div>
-            </td>
+            <td class="primary"><a href="<?= e(url('/admin/posts/edit.php?id=' . $p['id'])) ?>"><strong><?= e($p['title']) ?></strong></a><span class="sub mono">/blog/<?= e($p['slug']) ?></span></td>
+            <td data-label="Category"><?= $p['category_name'] ? e($p['category_name']) : '<span class="muted">—</span>' ?></td>
+            <td data-label="Keyword"><?= $p['primary_keyword'] ? e($p['primary_keyword']) : '<span class="muted">Not set</span>' ?></td>
+            <td data-label="Status"><?= $scheduled ? status_badge('scheduled') : status_badge($p['status']) ?></td>
+            <td data-label="Author"><?= e($p['author'] ?? '—') ?></td>
+            <td data-label="Published" class="nowrap muted"><?= $p['published_at'] ? e(format_date($p['published_at'])) : '—' ?></td>
+            <td data-label="SEO"><?= checklist_badge($checklist) ?></td>
+            <td><div class="row-actions">
+                <a href="<?= e(url('/admin/posts/edit.php?id=' . $p['id'])) ?>">Edit</a>
+                <?php if ($p['status'] === 'published' && !$scheduled): ?>
+                    <a href="<?= e(url('/blog/' . $p['slug'])) ?>" target="_blank" rel="noopener">View</a>
+                    <?= action_button('', 'Unpublish', ['id' => $p['id'], 'action' => 'unpublish']) ?>
+                <?php elseif ($p['status'] === 'draft'): ?>
+                    <?= action_button('', 'Publish', ['id' => $p['id'], 'action' => 'publish']) ?>
+                <?php endif; ?>
+                <?= action_button('', 'Delete', ['id' => $p['id'], 'action' => 'delete'], 'btn-link danger', 'Delete “' . $p['title'] . '” permanently? Its FAQs will be deleted too.') ?>
+            </div></td>
         </tr>
     <?php endforeach; ?>
     </tbody>
 </table></div>
-<?= admin_pagination($pager) ?>
+<div class="table-foot"><span>Showing <?= $pager['offset'] + 1 ?>–<?= $pager['offset'] + count($posts) ?> of <?= $pager['total'] ?></span><?= admin_pagination($pager) ?></div>
 <?php else: ?>
-    <?= admin_empty($search || $status ? 'No articles match these filters.' : 'No articles yet.', url('/admin/posts/edit.php'), 'Write an article') ?>
+    <?= admin_empty($filters['q'] || $filters['status'] || $filters['category'] ? 'No posts match these filters.' : 'Write your first guide to start earning informational search traffic.',
+        url('/admin/posts/edit.php'), 'New post', 'book', 'No posts found') ?>
 <?php endif; ?>
 <?php admin_footer(); ?>

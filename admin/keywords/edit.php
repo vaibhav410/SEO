@@ -7,14 +7,16 @@ if ($id && !$keyword) {
     abort(404);
 }
 $errors = [];
-$values = $keyword ?? ['keyword' => '', 'intent' => 'commercial', 'priority' => 'medium', 'target_url' => '', 'status' => 'researching', 'notes' => ''];
+$values = $keyword ?? ['keyword' => '', 'intent' => 'commercial', 'priority' => 'medium', 'target_url' => '', 'status' => 'researching', 'content_type' => '', 'service_id' => '', 'notes' => ''];
 
 if (is_post()) {
     [$data, $errors] = keyword_validate($_POST, $id);
     if (!$errors) {
+        $isNew = !$id;
         $id ? db_update('keywords', $id, $data) : ($id = db_insert('keywords', $data));
+        log_activity($isNew ? 'created' : 'updated', 'keyword', $id, 'Keyword “' . $data['keyword'] . '” ' . ($isNew ? 'added to the plan' : 'updated'));
         flash('success', 'Keyword saved.');
-        redirect('/admin/keywords/edit.php?id=' . $id);
+        redirect('/admin/keywords/view.php?id=' . $id);
     }
     $values = array_merge($values, $data);
 }
@@ -26,10 +28,10 @@ foreach (services_published() as $s) { $targets[] = '/services/' . $s['slug']; }
 foreach (landing_pages_published() as $l) { $targets[] = '/' . $l['slug']; }
 foreach (db_all('SELECT p.slug FROM posts p WHERE ' . POST_PUBLIC_SQL) as $p) { $targets[] = '/blog/' . $p['slug']; }
 
-admin_header($id ? 'Edit keyword' : 'Add keyword', 'keywords');
+admin_header($id ? 'Edit keyword' : 'Add keyword', 'keywords', ['Keywords' => '/admin/keywords/', $id ? $values['keyword'] : 'Add keyword' => null]);
 ?>
 <div class="page-head">
-    <div><h1><?= $id ? 'Edit keyword' : 'Add keyword' ?></h1><p><a href="<?= e(url('/admin/keywords/')) ?>">&larr; Keyword plan</a></p></div>
+    <div><h1><?= $id ? 'Edit keyword' : 'Add keyword' ?></h1><p><?= $id ? '<a href="' . e(url('/admin/keywords/view.php?id=' . $id)) . '">View keyword details</a>' : 'Search volume is never estimated: record verified figures with their source in the notes.' ?></p></div>
 </div>
 <?php if ($errors): ?><div class="alert alert-error" role="alert">Please fix the highlighted fields.</div><?php endif; ?>
 <form method="post" class="form-layout" novalidate>
@@ -44,6 +46,10 @@ admin_header($id ? 'Edit keyword' : 'Add keyword', 'keywords');
         <?= form_input('target_url', 'Target URL', (string) $values['target_url'], $errors, ['list' => 'targets', 'placeholder' => '/services/web-hosting',
             'help' => 'The single page that should rank for this keyword. One keyword, one page, to avoid cannibalisation.']) ?>
         <datalist id="targets"><?php foreach ($targets as $t): ?><option value="<?= e($t) ?>"><?php endforeach; ?></datalist>
+        <div class="form-row">
+            <?= form_select('content_type', 'Content type', (string) $values['content_type'], ['' => '— Not decided —'] + KEYWORD_CONTENT_TYPES, $errors) ?>
+            <?= form_select('service_id', 'Primary service', (string) $values['service_id'], ['' => '— None —'] + array_column(db_all('SELECT id, name FROM services ORDER BY sort_order'), 'name', 'id'), $errors) ?>
+        </div>
         <?= form_textarea('notes', 'Notes', (string) $values['notes'], $errors, ['rows' => 4, 'help' => 'Research notes, competitor observations, or verified search volume with its source and date.']) ?>
         <button class="btn btn-primary" type="submit">Save keyword</button>
     </section>

@@ -27,8 +27,9 @@ function service_find(int $id): ?array
 function services_admin_list(): array
 {
     return db_all(
-        'SELECT s.id, s.name, s.slug, s.status, s.sort_order, s.meta_title, s.meta_description, s.updated_at,
-                (SELECT COUNT(*) FROM faqs f WHERE f.service_id = s.id) AS faq_count
+        'SELECT s.*, (SELECT COUNT(*) FROM faqs f WHERE f.service_id = s.id) AS faq_count,
+                (SELECT COUNT(*) FROM posts p WHERE p.service_id = s.id AND ' . POST_PUBLIC_SQL . ') AS post_count,
+                (SELECT COUNT(*) FROM leads l WHERE l.source_page = CONCAT(\'/services/\', s.slug)) AS lead_count
          FROM services s ORDER BY s.sort_order, s.name'
     );
 }
@@ -44,10 +45,15 @@ function service_validate(array $input, ?int $id = null): array
         'description'      => 'required|max:300',
         'content'          => 'required',
         'features'         => 'max:3000',
+        'benefits'         => 'max:3000',
+        'cta_text'         => 'max:150',
         'primary_keyword'  => 'max:150',
         'external_url'     => 'url|max:255',
         'meta_title'       => 'max:70',
         'meta_description' => 'max:170',
+        'canonical_url'    => 'url|max:255',
+        'og_title'         => 'max:100',
+        'og_description'   => 'max:200',
         'sort_order'       => 'int',
         'status'           => 'required|in:draft,published',
     ]);
@@ -55,6 +61,7 @@ function service_validate(array $input, ?int $id = null): array
         $errors['slug'] = 'Another service already uses this slug.';
     }
     $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
+    $data['cta_text'] = $data['cta_text'] ?: 'Talk to our team';
     return [$data, $errors];
 }
 
