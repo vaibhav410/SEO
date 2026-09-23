@@ -120,3 +120,25 @@ function internal_link_validate(array $input, ?int $id = null): array
     }
     return [$data, $errors];
 }
+
+/**
+ * How many published articles link to each app path (manual links + automatic rules), computed from
+ * the HTML the public site actually renders. Cached for the request.
+ * @return array<string, int> path => number of linking articles
+ */
+function internal_inbound_map(): array
+{
+    static $map = null;
+    if ($map !== null) {
+        return $map;
+    }
+    $map = [];
+    foreach (db_all('SELECT p.slug, p.content FROM posts p WHERE ' . POST_PUBLIC_SQL) as $p) {
+        $html = apply_internal_links(render_markdown($p['content']), '/blog/' . $p['slug'], (int) setting('internal_links_max', '5'))['html'];
+        preg_match_all('#href="' . preg_quote(base_path(), '#') . '(/[^"\#?]*)#', $html, $m);
+        foreach (array_unique(array_map(fn($t) => rtrim($t, '/') ?: '/', $m[1])) as $target) {
+            $map[$target] = ($map[$target] ?? 0) + 1;
+        }
+    }
+    return $map;
+}
