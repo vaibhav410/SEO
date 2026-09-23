@@ -30,7 +30,7 @@ putenv('OPENROUTER_API_KEY=');
 
 require $root . '/includes/bootstrap.php';
 require $root . '/database/seeder.php';
-foreach (['keywords/keywords', 'backlinks/backlinks', 'audit/url_guard', 'audit/auditor', 'seo/content_health', 'ai/assistant'] as $m) {
+foreach (['keywords/keywords', 'backlinks/backlinks', 'audit/url_guard', 'audit/auditor', 'seo/content_health', 'ai/assistant', 'seo/checklist', 'seo/opportunities', 'analytics/analytics', 'distribution/distribution'] as $m) {
     require_once APP_ROOT . "/modules/$m.php";
 }
 
@@ -251,6 +251,33 @@ test('keyword_in_text allows natural word order', function () {
     ok(!keyword_in_text('vps hosting', 'Shared web hosting'));
 });
 
+section('Growth OS helpers');
+test('robots_validate flags dangerous and malformed rules', function () {
+    eq([], robots_validate("User-agent: GPTBot\nDisallow: /private/\n# comment\nSitemap: https://example.com/s.xml"));
+    $levels = array_column(robots_validate("User-agent: *\nDisallow: /\nNoindex: /x\nAllow: relative\nSitemap: /relative.xml"), 'message');
+    has('entire site', implode(' | ', $levels));
+    has('Unknown directive', implode(' | ', $levels));
+    has('must start with', implode(' | ', $levels));
+    has('absolute URL', implode(' | ', $levels));
+});
+test('schema_validate reports missing required and recommended properties', function () {
+    eq('valid', schema_validate(['@type' => 'Service', 'name' => 'X', 'provider' => ['@id' => 'y'], 'description' => 'd', 'areaServed' => 'IN'])['status']);
+    eq('error', schema_validate(['@type' => 'Article', 'headline' => 'H'])['status']);
+    eq('warning', schema_validate(['@type' => 'Article', 'headline' => 'H', 'datePublished' => 'd', 'author' => 'a'])['status']);
+    eq('error', schema_validate(['@type' => 'FAQPage', 'mainEntity' => [['name' => 'Q', 'acceptedAnswer' => ['text' => '']]]])['status']);
+});
+test('lead_campaign only accepts safe tokens', function () {
+    eq('linkedin-q3', lead_campaign('LinkedIn-Q3'));
+    eq(null, lead_campaign('<script>'));
+    eq(null, lead_campaign(str_repeat('a', 101)));
+    eq(null, lead_campaign(''));
+});
+test('keyword_recommended_type maps intent to content', function () {
+    eq('guide', keyword_recommended_type('informational'));
+    eq('landing_page', keyword_recommended_type('commercial'));
+    eq('service_page', keyword_recommended_type('transactional'));
+});
+
 if ($unitOnly) {
     finish();
 }
@@ -437,9 +464,9 @@ test('blog search is escaped and noindexed', function () use ($guest) {
     has('noindex', $r['body']);
 });
 test('SQL injection in search does not break the query', function () use ($guest) {
-    $r = $guest->get('/blog?q=' . rawurlencode("' OR 1=1 -- "));
+    $r = $guest->get('/search?q=' . rawurlencode("' OR 1=1 -- "));
     eq(200, $r['status']);
-    has('0 results', $r['body']);
+    has('No relevant results found.', $r['body']);
     $api = json_decode($guest->get('/api/search.php?q=' . rawurlencode("%' UNION SELECT password_hash FROM users -- "))['body'], true);
     eq([], $api['results']);
 });
@@ -682,7 +709,107 @@ test('audits a live public page end to end (needs internet)', function () use ($
     $id = json_decode($r['body'], true)['id'];
     $report = $admin->get("/admin/audits/view.php?id=$id")['body'];
     has('SEO health', $report);
-    has('not a Google ranking metric', $report);
+    has('not a Google score', $report);
+    has('Recommended fix', $report);
+});
+
+section('Growth OS: new public features');
+test('site search page is noindex with grouped results and an empty state', function () use ($guest) {
+    $r = $guest->get('/search?q=ssl');
+    eq(200, $r['status']);
+    has('noindex', $r['body']);
+    has('result-type', $r['body']);
+    has('No relevant results found.', $guest->get('/search?q=zzqqxx')['body']);
+    has('Disallow: /search', $guest->get('/robots.txt')['body']);
+});
+test('category archives are indexable and listed in the sitemap', function () use ($guest, $base) {
+    $r = $guest->get('/blog/category/hosting');
+    eq(200, $r['status']);
+    eq($base . '/blog/category/hosting', meta($r['body'], '//link[@rel="canonical"]/@href'));
+    eq(404, $guest->get('/blog/category/does-not-exist')['status']);
+    has($base . '/blog/category/hosting', $guest->get('/sitemap.xml')['body']);
+});
+test('landing page leads record keyword and sanitised campaign', function () use ($base) {
+    $b = new Browser($base);
+    $page = $b->get('/wordpress-hosting-india?utm_campaign=LinkedIn-Spring');
+    has('name="campaign" value="linkedin-spring"', $page['body']);
+    preg_match('/name="_csrf" value="([a-f0-9]+)"/', $page['body'], $m);
+    db_query('DELETE FROM leads WHERE ip_hash = ?', [hash_hmac('sha256', '127.0.0.1', (string) config('app.secret'))]);
+    $b->post('/wordpress-hosting-india', ['_csrf' => $m[1], '_ts' => lead_time_token(time() - 10), 'name' => 'Attribution Test', 'email' => 'attr@example.com',
+        'message' => 'Testing attribution of this lead.', 'campaign' => 'LinkedIn-Spring']);
+    $lead = db_one('SELECT keyword, campaign, source_page FROM leads WHERE email = ?', ['attr@example.com']);
+    eq('/wordpress-hosting-india', $lead['source_page']);
+    eq('wordpress hosting india', $lead['keyword']);
+    eq('linkedin-spring', $lead['campaign']);
+    ok(db_value("SELECT COUNT(*) FROM activity_log WHERE entity_type = 'lead' AND action = 'received'") > 0, 'lead activity not logged');
+});
+
+section('Growth OS: admin screens');
+test('every admin screen renders for an admin', function () use ($admin) {
+    $pages = ['/admin/dashboard.php', '/admin/analytics/', '/admin/opportunities/', '/admin/opportunities/?type=technical', '/admin/technical/',
+        '/admin/technical/schema.php', '/admin/technical/sitemap.php', '/admin/technical/robots.php', '/admin/categories/', '/admin/distribution/',
+        '/admin/search.php?q=hosting', '/api/admin-search.php?q=ssl', '/admin/keywords/view.php?id=1', '/admin/backlinks/view.php?id=1',
+        '/admin/links/?tab=existing', '/admin/links/?tab=suggested', '/admin/links/?tab=missing', '/admin/links/?tab=rules',
+        '/admin/posts/?sort=title&dir=asc', '/admin/leads/?sort=status', '/admin/keywords/?sort=keyword&intent=commercial',
+        '/admin/settings/?tab=users', '/admin/settings/?tab=security', '/admin/settings/?tab=system', '/admin/settings/?tab=seo'];
+    foreach ($pages as $p) {
+        $r = $admin->get($p);
+        eq(200, $r['status'], $p);
+        hasnt('debug-detail', $r['body'], $p);
+    }
+});
+test('dashboard shows real metrics and "not connected" states, never invented traffic', function () use ($admin) {
+    $html = $admin->get('/admin/dashboard.php')['body'];
+    has('Growth loop', $html);
+    has('Connect Google Analytics', $html);
+    has('Connect Search Console', $html);
+});
+test('schema inventory reports no errors for the seeded site', function () {
+    $errors = array_filter(schema_inventory(), fn($r) => schema_validate($r['node'])['status'] === 'error');
+    eq([], array_map(fn($r) => $r['type'] . ' ' . $r['path'], $errors));
+});
+test('robots.txt editor rejects rules that block the whole site', function () use ($admin, $guest) {
+    $admin->submit('/admin/technical/robots.php', ['robots_extra' => "User-agent: *\nDisallow: /"]);
+    hasnt("Disallow: /\n\nSitemap", $guest->get('/robots.txt')['body']);
+    $admin->submit('/admin/technical/robots.php', ['robots_extra' => "User-agent: GPTBot\nDisallow: /"]);
+    has('User-agent: GPTBot', $guest->get('/robots.txt')['body']);
+});
+test('editors cannot edit robots.txt or site settings but can change their password', function () use ($base) {
+    $b = new Browser($base);
+    $b->submit('/admin/login.php', ['email' => 'editor@test.local', 'password' => 'EditorPass123']);
+    eq(403, $b->get('/admin/technical/robots.php')['status']);
+    eq(403, $b->get('/admin/settings/?tab=users')['status']);
+    eq(200, $b->get('/admin/settings/?tab=account')['status']);
+});
+test('categories and distribution CRUD with validation', function () use ($admin) {
+    $admin->submit('/admin/categories/', ['name' => 'Test Category', 'slug' => '', 'description' => 'Testing', 'meta_description' => '', 'sort_order' => '9']);
+    ok(db_value('SELECT id FROM categories WHERE slug = ?', ['test-category']) !== null, 'category not saved');
+    $r = $admin->submit('/admin/distribution/', ['platform' => 'linkedin', 'title' => 'Shared guide', 'post_id' => '', 'url' => '', 'status' => 'published', 'published_at' => '', 'notes' => '']);
+    has('Add the URL of the published post', $r['body']);
+    $admin->submit('/admin/distribution/', ['platform' => 'linkedin', 'title' => 'Shared guide', 'post_id' => '', 'url' => 'https://www.linkedin.com/posts/example', 'status' => 'published', 'published_at' => '', 'notes' => '']);
+    eq(date('Y-m-d'), db_value('SELECT published_at FROM distribution_posts WHERE title = ?', ['Shared guide']));
+});
+test('opportunities can be marked done and reopened', function () use ($admin) {
+    $ops = opportunities_all();
+    ok(count($ops) > 0, 'no opportunities computed');
+    $key = $ops[0]['key'];
+    $admin->submit('/admin/opportunities/', ['key' => $key, 'status' => 'done', 'title' => $ops[0]['title']]);
+    eq('done', db_value('SELECT status FROM opportunity_states WHERE opportunity_key = ?', [$key]));
+    $admin->submit('/admin/opportunities/?view=closed', ['key' => $key, 'status' => 'open', 'title' => $ops[0]['title']]);
+    eq(null, db_value('SELECT status FROM opportunity_states WHERE opportunity_key = ?', [$key]));
+});
+test('notifications can be marked as read', function () use ($admin) {
+    $admin->submit('/admin/dashboard.php', [], '/admin/notifications.php');
+    ok(db_value('SELECT notifications_seen_at FROM users WHERE email = ?', [DEMO_ADMIN_EMAIL]) !== null);
+});
+test('users: admin can add an editor; duplicate email rejected', function () use ($admin) {
+    $admin->submit('/admin/settings/?tab=users', ['form' => 'user_add', 'name' => 'New Editor', 'email' => 'new.editor@test.local', 'role' => 'editor', 'password' => 'StrongPass123']);
+    eq('editor', db_value('SELECT role FROM users WHERE email = ?', ['new.editor@test.local']));
+    $r = $admin->submit('/admin/settings/?tab=users', ['form' => 'user_add', 'name' => 'Dup', 'email' => 'new.editor@test.local', 'role' => 'editor', 'password' => 'StrongPass123']);
+    has('already exists', $r['body']);
+});
+test('activity timeline records admin changes', function () {
+    ok((int) db_value("SELECT COUNT(*) FROM activity_log WHERE entity_type IN ('post', 'category', 'user')") >= 3, 'activity missing');
 });
 
 finish();
