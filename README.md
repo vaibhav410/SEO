@@ -12,7 +12,14 @@ Keyword → Content → Landing page → Internal links → Organic discovery �
 > *"Design & develop a web application to increase brand value & SEO ranking for syscom.co.in."*
 > Full write-up: [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
 >
-> **Live demo:** https://syscom-growthhub.onrender.com (free instance: the first request after a period of inactivity can take up to a minute while it wakes, and demo data is restored on every restart).
+> **Live demo**
+>
+> | | URL | Role |
+> | --- | --- | --- |
+> | **Frontend (Vercel)** | https://syscom-growthhub.vercel.app | Public entry point on Vercel's CDN; forwards every request to the backend |
+> | **Backend (Render)** | https://syscom-growthhub.onrender.com | PHP 8.3 + Apache + MySQL (MariaDB) container that renders the pages and runs the admin |
+>
+> Admin: `/admin/` on either URL. Free instances sleep when idle, so the first request can take up to a minute, and demo data is restored on every restart.
 
 ![Public homepage](docs/screenshots/public-home.png)
 
@@ -215,7 +222,17 @@ modules, and the auditor (SSRF, invalid URL, live fetch). See the test matrix in
 
 ## 14. Deployment
 
-### Render (Docker, used for the live demo)
+### Live architecture
+
+```
+Visitor ─▶ Vercel (syscom-growthhub.vercel.app, CDN, vercel/vercel.json rewrite)
+              └─▶ Render (syscom-growthhub.onrender.com, Docker: Apache + PHP + MariaDB)
+```
+
+Render's `APP_URL` is set to the Vercel URL, so canonical links, the sitemap and robots.txt use the Vercel domain.
+The `vercel/` folder contains only the rewrite config; to redeploy it: `cd vercel && vercel deploy --prod`.
+
+### Render (Docker backend)
 
 The repository includes a `Dockerfile` (Apache + PHP 8.3 + MariaDB in one container) and a `render.yaml` blueprint.
 
